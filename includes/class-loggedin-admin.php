@@ -176,9 +176,13 @@ class Loggedin_Admin {
 		$value = get_option( 'loggedin_logic', 'allow' );
 
 		echo '<input type="radio" name="loggedin_logic" value="allow" ' . checked( $value, 'allow', false ) . '/> ' . esc_html__( 'Allow', 'loggedin' );
+		echo '<br>';
 		echo ' <input type="radio" name="loggedin_logic" value="block" ' . checked( $value, 'block', false ) . '/> ' . esc_html__( 'Block', 'loggedin' );
+		echo '<br>';
+		echo ' <input type="radio" name="loggedin_logic" value="semiBlock" ' . checked( $value, 'semiBlock', false ) . '/> ' . esc_html__( 'SemiBlock', 'loggedin' );
 		echo '<p class="description"><strong>' . esc_html__( 'Allow:', 'loggedin' ) . '</strong> ' . esc_html__( 'Allow new login by terminating all other old sessions when the limit is reached.', 'loggedin' ) . '</p>';
 		echo '<p class="description"><strong>' . esc_html__( 'Block:', 'loggedin' ) . '</strong> ' . esc_html__( ' Do not allow new login if the limit is reached. Users need to wait for the old login sessions to expire.', 'loggedin' ) . '</p>';
+		echo '<p class="description"><strong>' . esc_html__( 'Semi Block:', 'loggedin' ) . '</strong> ' . esc_html__( 'Block option + User can Logout from other accounts manually', 'loggedin' ) . '</p>';
 	}
 
 	/**

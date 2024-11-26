@@ -35,6 +35,8 @@ class Loggedin {
 		add_filter( 'wp_authenticate_user', array( $this, 'validate_block_logic' ) );
 		// Use password check filter.
 		add_filter( 'check_password', array( $this, 'validate_allow_logic' ), 10, 4 );
+		// Use to set cookie and show success message
+		add_action( 'init', array($this, 'set_cookie') );
 	}
 
 	/**
@@ -70,9 +72,15 @@ class Loggedin {
 			}
 		}
 
+		if(isset($_COOKIE['loggedin_clean_session'])) {
+			// Sessions token instance.
+			$manager = WP_Session_Tokens::get_instance( $user_id );
+			// Destroy all others.
+			$manager->destroy_all();
+		}
+
 		return true;
 	}
-
 
 	/**
 	 * Validate if the maximum active logins limit reached.
@@ -94,7 +102,14 @@ class Loggedin {
 		}
 
 		// Only when block method.
-		if ( 'block' === get_option( 'loggedin_logic', 'allow' ) ) {
+		if ( 'semiBlock' === get_option( 'loggedin_logic', 'allow' ) ) {
+			if (!isset($_COOKIE['loggedin_clean_session'])) {
+				// Check if limit exceed.
+				if ( $this->reached_limit( $user->ID ) ) {
+					return new WP_Error( 'loggedin_reached_limit', $this->error_message() );
+				}
+			}
+		}elseif ( 'block' === get_option( 'loggedin_logic', 'allow' ) ) {
 			// Check if limit exceed.
 			if ( $this->reached_limit( $user->ID ) ) {
 				return new WP_Error( 'loggedin_reached_limit', $this->error_message() );
@@ -185,6 +200,13 @@ class Loggedin {
 		// Error message.
 		$message = __( 'Maximum no. of active logins found for this account. Please logout from another device to continue.', 'loggedin' );
 
+		if('semiBlock' == get_option( 'loggedin_logic', 'allow' )) {
+			global $wp;
+			$url = home_url( add_query_arg( array(), $wp->request ) );
+			$message .= '<p>Or you could logout from other account manually. Just click link below.</p>';
+			$message .= '<p><a href="' . $url . '/?loggedin_clean_session=1">Delete all</a></p>';
+		}
+
 		/**
 		 * Filter hook to change the error message.
 		 *
@@ -193,6 +215,24 @@ class Loggedin {
 		 * @since 1.0.0
 		 */
 		return apply_filters( 'loggedin_error_message', $message );
+	}
+
+	/**
+	 * Set cookie for deleting it later
+	 * 
+	 * @since 1.4.0
+	 * @access public
+	 * 
+	 * @return void
+	 */
+	public function set_cookie() {
+		if(isset($_REQUEST['loggedin_clean_session'])) {
+			if ( !isset($_COOKIE['loggedin_clean_session']) ) {
+				setcookie('loggedin_clean_session', 1, time()+(10*60), '/');
+
+				echo '<script>alert("sucess");</script>';
+			}
+		}
 	}
 
 }
