@@ -258,8 +258,4 @@ For the full release history, see the [changelog](https://docs.foxelabs.com/soft
 == Upgrade Notice ==
 
 = 3.3.0 =
-* New: **Logout All Users** — sign out every user on the site in one click from the Force Logout panel, with a confirmation dialog. Instant at any user count, and the admin who triggers it stays logged in.
-* New: `wp loggedin sessions destroy-all` — the same site-wide logout from WP-CLI.
-* New: REST endpoint `POST /loggedin/v1/sessions/destroy-all` backing the admin button.
-* New: `loggedin_logout_all_users` action fired when a site-wide logout is triggered, and `loggedin_session_invalidated` action fired for each stale session as it is rejected.
-* Improve: The site-wide logout goes through the standard `WP_Session_Tokens` API, so it works with any session storage backend.
+Adds Logout All Users — sign out every user on the site at once, instantly at any user count, from the admin or WP-CLI. No changes to existing behaviour.

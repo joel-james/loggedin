@@ -1,0 +1,27 @@
+/*
+ * Force Logout panel.
+ *
+ * Two concerns:
+ *
+ *   - `__form` keeps the identifier input and its submit button
+ *     visually attached — they're one action, so the default
+ *     PanelRow gap between them read as two unrelated controls.
+ *
+ *   - `__all` separates the site-wide "Logout All Users" section
+ *     from the per-user form above it with a rule, since the two do
+ *     very different amounts of damage.
+ */
+.loggedin-force-logout__form {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 8px;
+	width: 100%;
+}
+
+.loggedin-force-logout__all {
+	border-top: 1px solid #dcdcde;
+	margin-top: 8px;
+	padding-top: 16px;
+	width: 100%;
+}

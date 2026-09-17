@@ -16,15 +16,13 @@ import { useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import {
 	Button,
+	Flex,
+	FlexItem,
+	Modal,
 	Notice,
 	PanelBody,
 	PanelRow,
 	TextControl,
-	// The dialog has shipped unchanged since WP 5.9 and is what core
-	// itself uses for destructive confirmations; the underscore prefix
-	// is the only "experimental" thing left about it.
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
-	__experimentalConfirmDialog as ConfirmDialog,
 } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';
 import { useDispatch } from '@wordpress/data';
@@ -192,38 +190,42 @@ const ForceLogoutPanel = () => {
 			title={ __( 'Force Logout', 'loggedin' ) }
 			initialOpen
 		>
+			{ /*
+			 * Input and button are one form, so they share a single
+			 * PanelRow — separate rows added a visual gap that made
+			 * them read as unrelated controls.
+			 */ }
 			<PanelRow>
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					label={ __( 'User', 'loggedin' ) }
-					help={ __(
-						'Enter a user id, email address, or username. All active sessions for that user will be destroyed.',
-						'loggedin'
-					) }
-					value={ identifier }
-					disabled={ isWorking }
-					onChange={ setIdentifier }
-				/>
+				<div className="loggedin-force-logout__form">
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						label={ __( 'User', 'loggedin' ) }
+						help={ __(
+							'Enter a user id, email address, or username. All active sessions for that user will be destroyed.',
+							'loggedin'
+						) }
+						value={ identifier }
+						disabled={ isWorking }
+						onChange={ setIdentifier }
+					/>
+					<Button
+						__next40pxDefaultSize
+						variant="secondary"
+						isDestructive
+						isBusy={ isWorking }
+						disabled={ isWorking || ! identifier.trim() }
+						onClick={ handleSubmit }
+					>
+						{ isWorking
+							? __( 'Logging out…', 'loggedin' )
+							: __( 'Force Logout', 'loggedin' ) }
+					</Button>
+				</div>
 			</PanelRow>
 
 			<PanelRow>
-				<Button
-					__next40pxDefaultSize
-					variant="secondary"
-					isDestructive
-					isBusy={ isWorking }
-					disabled={ isWorking || ! identifier.trim() }
-					onClick={ handleSubmit }
-				>
-					{ isWorking
-						? __( 'Logging out…', 'loggedin' )
-						: __( 'Force Logout', 'loggedin' ) }
-				</Button>
-			</PanelRow>
-
-			<PanelRow>
-				<div>
+				<div className="loggedin-force-logout__all">
 					<p className="description">
 						{ __(
 							'Or log out every user on the site at once. Sessions are invalidated instantly — even on sites with thousands of users — and your own session stays active.',
@@ -245,17 +247,41 @@ const ForceLogoutPanel = () => {
 				</div>
 			</PanelRow>
 
-			<ConfirmDialog
-				isOpen={ isConfirmingAll }
-				confirmButtonText={ __( 'Logout All Users', 'loggedin' ) }
-				onConfirm={ handleLogoutAll }
-				onCancel={ () => setIsConfirmingAll( false ) }
-			>
-				{ __(
-					'Every user will be logged out from all of their devices. Your own session will stay active. Continue?',
-					'loggedin'
-				) }
-			</ConfirmDialog>
+			{ isConfirmingAll && (
+				<Modal
+					title={ __( 'Logout all users?', 'loggedin' ) }
+					size="medium"
+					onRequestClose={ () => setIsConfirmingAll( false ) }
+				>
+					<p>
+						{ __(
+							'Every user will be logged out from all of their devices. Your own session will stay active.',
+							'loggedin'
+						) }
+					</p>
+					<Flex justify="flex-end">
+						<FlexItem>
+							<Button
+								__next40pxDefaultSize
+								variant="tertiary"
+								onClick={ () => setIsConfirmingAll( false ) }
+							>
+								{ __( 'Cancel', 'loggedin' ) }
+							</Button>
+						</FlexItem>
+						<FlexItem>
+							<Button
+								__next40pxDefaultSize
+								variant="primary"
+								isDestructive
+								onClick={ handleLogoutAll }
+							>
+								{ __( 'Logout All Users', 'loggedin' ) }
+							</Button>
+						</FlexItem>
+					</Flex>
+				</Modal>
+			) }
 
 			{ crossSell }
 		</PanelBody>
