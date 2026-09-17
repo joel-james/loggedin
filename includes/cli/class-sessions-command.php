@@ -6,8 +6,10 @@
  * read-only view of a single user's active sessions.
  *
  * Deliberately scoped to *one user at a time* — every subcommand takes
- * a `<user>` identifier. A site-wide "who is logged in right now"
- * report is the job of the Active Sessions add-on, which owns the
+ * a `<user>` identifier — with one exception: `destroy-all`, which logs
+ * out the whole site via the logout epoch (an O(1) option write, no
+ * per-user iteration). A site-wide "who is logged in right now" report
+ * remains the job of the Active Sessions add-on, which owns the
  * cross-user queries and the pagination that comes with them.
  *
  * @package FoxeLabs\Loggedin\Cli
@@ -17,6 +19,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Cli;
 
+use FoxeLabs\Loggedin\Front\Logout_Epoch;
 use WP_CLI;
 use WP_CLI\Fetchers\User as User_Fetcher;
 use WP_CLI\Formatter;
@@ -254,6 +257,52 @@ final class Sessions_Command {
 				$user->user_login
 			)
 		);
+	}
+
+	/**
+	 * Log out every user on the site.
+	 *
+	 * Stores a logout epoch instead of iterating users — a single
+	 * option write, so it completes instantly at any user count. Each
+	 * stale session is destroyed on its owner's next request. Because
+	 * no per-user iteration happens, `loggedin_destroy_all_sessions`
+	 * does not fire; add-ons listen for `loggedin_logout_all_users`
+	 * instead.
+	 *
+	 * There is no current session on the CLI, so — unlike the wp-admin
+	 * button — nobody is exempted: literally every session is logged
+	 * out, including any belonging to the person running the command.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--yes]
+	 * : Skip the confirmation prompt.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     $ wp loggedin sessions destroy-all --yes
+	 *     Success: All users will be logged out on their next request.
+	 *
+	 * @subcommand destroy-all
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param array<int, string>    $args       Positional arguments (unused).
+	 * @param array<string, string> $assoc_args Associative arguments.
+	 *
+	 * @return void
+	 */
+	public function destroy_all( array $args, array $assoc_args ): void {
+		unset( $args );
+
+		WP_CLI::confirm(
+			__( 'Are you sure you want to log out every user on this site?', 'loggedin' ),
+			$assoc_args
+		);
+
+		Logout_Epoch::logout_all( false );
+
+		WP_CLI::success( __( 'All users will be logged out on their next request.', 'loggedin' ) );
 	}
 
 	/**

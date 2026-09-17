@@ -20,6 +20,11 @@ import {
 	PanelBody,
 	PanelRow,
 	TextControl,
+	// The dialog has shipped unchanged since WP 5.9 and is what core
+	// itself uses for destructive confirmations; the underscore prefix
+	// is the only "experimental" thing left about it.
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalConfirmDialog as ConfirmDialog,
 } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';
 import { useDispatch } from '@wordpress/data';
@@ -77,6 +82,12 @@ const ForceLogoutPanel = () => {
 
 	// Gates double-clicks and drives the button's busy spinner.
 	const [ isWorking, setIsWorking ] = useState( false );
+
+	// "Logout all users" flow: confirmation dialog visibility and its
+	// own busy flag, kept separate so the two buttons don't disable
+	// each other.
+	const [ isConfirmingAll, setIsConfirmingAll ] = useState( false );
+	const [ isWorkingAll, setIsWorkingAll ] = useState( false );
 
 	const { createSuccessNotice, createErrorNotice } =
 		useDispatch( noticesStore );
@@ -140,6 +151,42 @@ const ForceLogoutPanel = () => {
 		}
 	};
 
+	/**
+	 * Confirmed "logout everyone" handler — POST the destroy-all
+	 * endpoint. The server keeps the current admin's session alive, so
+	 * no client-side re-auth handling is needed here.
+	 */
+	const handleLogoutAll = async () => {
+		setIsConfirmingAll( false );
+		setIsWorkingAll( true );
+
+		try {
+			await apiFetch( {
+				path: '/loggedin/v1/sessions/destroy-all',
+				method: 'POST',
+			} );
+
+			createSuccessNotice(
+				__(
+					'All users have been logged out. Your own session stays active.',
+					'loggedin'
+				),
+				{ type: 'snackbar' }
+			);
+		} catch ( error ) {
+			createErrorNotice(
+				error?.message ||
+					__(
+						'Could not log out all users. Please try again.',
+						'loggedin'
+					),
+				{ type: 'snackbar' }
+			);
+		} finally {
+			setIsWorkingAll( false );
+		}
+	};
+
 	return (
 		<PanelBody
 			title={ __( 'Force Logout', 'loggedin' ) }
@@ -174,6 +221,41 @@ const ForceLogoutPanel = () => {
 						: __( 'Force Logout', 'loggedin' ) }
 				</Button>
 			</PanelRow>
+
+			<PanelRow>
+				<div>
+					<p className="description">
+						{ __(
+							'Or log out every user on the site at once. Sessions are invalidated instantly — even on sites with thousands of users — and your own session stays active.',
+							'loggedin'
+						) }
+					</p>
+					<Button
+						__next40pxDefaultSize
+						variant="secondary"
+						isDestructive
+						isBusy={ isWorkingAll }
+						disabled={ isWorkingAll }
+						onClick={ () => setIsConfirmingAll( true ) }
+					>
+						{ isWorkingAll
+							? __( 'Logging out everyone…', 'loggedin' )
+							: __( 'Logout All Users', 'loggedin' ) }
+					</Button>
+				</div>
+			</PanelRow>
+
+			<ConfirmDialog
+				isOpen={ isConfirmingAll }
+				confirmButtonText={ __( 'Logout All Users', 'loggedin' ) }
+				onConfirm={ handleLogoutAll }
+				onCancel={ () => setIsConfirmingAll( false ) }
+			>
+				{ __(
+					'Every user will be logged out from all of their devices. Your own session will stay active. Continue?',
+					'loggedin'
+				) }
+			</ConfirmDialog>
 
 			{ crossSell }
 		</PanelBody>

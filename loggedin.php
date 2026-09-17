@@ -20,7 +20,7 @@
  * Plugin Name:       Loggedin - Session Manager, Limit Concurrent Logins & Force Logout
  * Plugin URI:        https://foxelabs.com/software/plugins/loggedin
  * Description:       Limit an account to a specific number of simultaneous logins across all devices.
- * Version:           3.2.0
+ * Version:           3.3.0
  * Author:            Joel James
  * Author URI:        https://foxelabs.com/
  * Donate link:       https://paypal.me/JoelCJ

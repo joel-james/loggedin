@@ -15,6 +15,7 @@ Loggedin manages the login sessions your users hold and gives you the tools to e
 - **Concurrent-session cap** — set a global maximum number of simultaneous logins per account.
 - **Two enforcement modes** — block the new login, or auto-logout the oldest active session.
 - **Force-logout tool** — terminate every active session for any user from the admin UI.
+- **Logout all users** — sign out every account on the site at once via a session-validity epoch: one option write instead of a per-user loop, so it's instant at any user count and the triggering admin stays logged in.
 - **Modern settings UI** — built with `@wordpress/components` and Gutenberg patterns, not a hand-rolled options page.
 - **REST-backed** — all settings flow through the WordPress REST API.
 - **WP-CLI commands** — inspect and destroy sessions and read/write settings from the shell; see [WP-CLI](#wp-cli).
@@ -77,6 +78,7 @@ wp loggedin sessions list <user> --field=token      # token hashes only
 wp loggedin sessions count <user>
 wp loggedin sessions destroy <user> --yes           # sign out everywhere
 wp loggedin sessions destroy <user> --token=<hash>  # sign out one device
+wp loggedin sessions destroy-all --yes              # sign out every user on the site
 
 # Settings
 wp loggedin settings list

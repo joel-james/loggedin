@@ -7,17 +7,17 @@
  * downstream modules can rely on their dependencies being available.
  *
  * Boot phases:
- *   1. {@see common()} — Settings store + Upgrader. Always loaded so
- *      REST and front-end requests can read settings.
- *   2. {@see front()} — Session guard hooked into the auth pipeline.
- *      Always loaded; front-of-site logins happen outside `is_admin()`.
- *   3. {@see admin()} — wp-admin only: menu, page, asset enqueue.
- *   4. {@see addons()} — Freemius wiring. Loaded everywhere; the
+ *   1. {@see always()} — modules for every request type: the Settings
+ *      store and Upgrader, plus the auth-pipeline enforcement
+ *      (Session_Guard, Logout_Epoch). Not gated on `is_admin()` —
+ *      logins and session checks happen on every request kind.
+ *   2. {@see admin()} — wp-admin only: menu, page, asset enqueue.
+ *   3. {@see addons()} — Freemius wiring. Loaded everywhere; the
  *      Freemius instances themselves are built lazily so non-admin
  *      requests don't pay for them unless a REST endpoint asks.
- *   5. {@see api()} — REST controllers. Always loaded; they only
+ *   4. {@see api()} — REST controllers. Always loaded; they only
  *      register routes on `rest_api_init`.
- *   6. {@see cli()} — WP-CLI commands. Only wired on CLI requests, so
+ *   5. {@see cli()} — WP-CLI commands. Only wired on CLI requests, so
  *      web traffic never loads the command classes.
  *
  * The `loggedin_init` action fires once boot completes so add-ons can
@@ -38,6 +38,7 @@ use FoxeLabs\Loggedin\Api\Sessions as Sessions_Api;
 use FoxeLabs\Loggedin\Api\Settings as Settings_Api;
 use FoxeLabs\Loggedin\Cli\Commands;
 use FoxeLabs\Loggedin\Contracts\Singleton;
+use FoxeLabs\Loggedin\Front\Logout_Epoch;
 use FoxeLabs\Loggedin\Front\Session_Guard;
 use FoxeLabs\Loggedin\Setup\Settings;
 use FoxeLabs\Loggedin\Setup\Upgrader;
@@ -61,8 +62,7 @@ final class Core {
 	 * @return void
 	 */
 	protected function init(): void {
-		$this->common();
-		$this->front();
+		$this->always();
 		$this->admin();
 		$this->addons();
 		$this->api();
@@ -84,19 +84,18 @@ final class Core {
 	}
 
 	/**
-	 * Modules required on every request type.
+	 * Modules wired on every request type — front, wp-admin, REST,
+	 * AJAX, and wp-login alike.
+	 *
+	 * Settings and the Upgrader come first so the request-level
+	 * enforcement modules (Session_Guard, Logout_Epoch) can read
+	 * settings during their own `init`.
 	 */
-	private function common(): void {
+	private function always(): void {
 		Settings::instance();
 		Upgrader::instance();
-	}
-
-	/**
-	 * Front-end modules — runs on every page load, including the
-	 * wp-login flow.
-	 */
-	private function front(): void {
 		Session_Guard::instance();
+		Logout_Epoch::instance();
 	}
 
 	/**

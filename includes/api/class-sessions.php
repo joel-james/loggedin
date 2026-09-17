@@ -6,9 +6,14 @@
  * single identifier — id, email, or username — resolves it to a
  * `WP_User`, and destroys every active session for that user.
  *
- * Route:
+ * Routes:
  *
- *   POST /loggedin/v1/sessions/destroy   body: { user: string }
+ *   POST /loggedin/v1/sessions/destroy       body: { user: string }
+ *   POST /loggedin/v1/sessions/destroy-all   (no body)
+ *
+ * `destroy-all` bumps the {@see Logout_Epoch} instead of iterating
+ * users, so it is O(1) regardless of user count. The calling admin's
+ * own session is kept alive.
  *
  * The same identifier-resolution rules apply across all three input
  * shapes — numeric strings look up by id, anything with an `@` looks
@@ -24,6 +29,7 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Api;
 
 use FoxeLabs\Loggedin\Contracts\Singleton;
+use FoxeLabs\Loggedin\Front\Logout_Epoch;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -52,13 +58,24 @@ final class Sessions extends Endpoint {
 	}
 
 	/**
-	 * Register the `/sessions/destroy` route.
+	 * Register the `/sessions/destroy` and `/sessions/destroy-all` routes.
 	 *
 	 * @since 3.0.0
+	 * @since 3.3.0 Added `/sessions/destroy-all`.
 	 *
 	 * @return void
 	 */
 	public function register_routes(): void {
+		register_rest_route(
+			$this->namespace,
+			'/sessions/destroy-all',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'destroy_all_sessions' ),
+				'permission_callback' => array( $this, 'permission_check' ),
+			)
+		);
+
 		register_rest_route(
 			$this->namespace,
 			'/sessions/destroy',
@@ -141,6 +158,37 @@ final class Sessions extends Endpoint {
 					'login'        => (string) $user->user_login,
 					'display_name' => (string) $user->display_name,
 				),
+			),
+			200
+		);
+	}
+
+	/**
+	 * POST handler — log out every user on the site.
+	 *
+	 * Delegates to {@see Logout_Epoch::logout_all()}, which stores a
+	 * validity epoch instead of touching each user's sessions. The
+	 * requesting admin's own session is re-stamped so they stay
+	 * logged in.
+	 *
+	 * Response body shape:
+	 *   { success: true, epoch: <int> }
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param WP_REST_Request $request Incoming request (unused).
+	 *
+	 * @return WP_REST_Response
+	 */
+	public function destroy_all_sessions( WP_REST_Request $request ): WP_REST_Response {
+		unset( $request );
+
+		$epoch = Logout_Epoch::logout_all();
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'epoch'   => $epoch,
 			),
 			200
 		);

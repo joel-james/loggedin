@@ -36,6 +36,12 @@ delete_option( 'loggedin_logic' );
 // Review-notice scheduling.
 delete_option( 'loggedin_rating_notice' );
 
+// Site-wide logout epoch. Deleting it means sessions that were logged
+// out via "Logout All Users" but whose owners never returned become
+// valid again if their cookies haven't expired — acceptable, since the
+// plugin enforcing the logout is being removed anyway.
+delete_option( 'loggedin_logout_all_before' );
+
 global $wpdb;
 
 /*
