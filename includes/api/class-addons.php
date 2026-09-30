@@ -176,8 +176,13 @@ final class Addons extends Endpoint {
 			);
 		}
 
+		// Trim only: sanitize_text_field() strips `%` followed by two
+		// hex characters as a percent-encoded octet, and Freemius keys
+		// can contain exactly that (e.g. `%bB`), which corrupts the key
+		// and Freemius rejects it as invalid. The key is only sent to
+		// the Freemius API, never output, so it needs no text cleanup.
 		$id  = (int) $request['id'];
-		$key = sanitize_text_field( (string) $request->get_param( 'key' ) );
+		$key = trim( (string) $request->get_param( 'key' ) );
 
 		$result = $addons->activate_license( $id, $key );
 
