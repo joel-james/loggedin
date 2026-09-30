@@ -4,7 +4,7 @@ Tags: concurrent login, login limit, prevent account sharing, session management
 Donate link: https://paypal.me/JoelCJ
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.0
+Stable tag: 3.3.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -205,6 +205,9 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 
 == Changelog ==
 
+= 3.3.1 =
+* Fix: Some valid add-on license keys were rejected as invalid. Keys containing a `%` followed by two characters from 0–9 or a–f, in either case (for example `%bB`) were shortened before being sent to the licensing server. Affected add-ons could not be activated and so stopped receiving updates.
+
 = 3.3.0 =
 * New: **Logout All Users** — sign out every user on the site in one click from the Force Logout panel, with a confirmation dialog. Instant at any user count, and the admin who triggers it stays logged in.
 * New: `wp loggedin sessions destroy-all` — the same site-wide logout from WP-CLI.
@@ -257,5 +260,5 @@ For the full release history, see the [changelog](https://docs.foxelabs.com/soft
 
 == Upgrade Notice ==
 
-= 3.3.0 =
-Adds Logout All Users — sign out every user on the site at once, instantly at any user count, from the admin or WP-CLI. No changes to existing behaviour.
+= 3.3.1 =
+Fixes some valid add-on license keys being rejected as invalid. Update, then activate your add-on license again if it failed before.

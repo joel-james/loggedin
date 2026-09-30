@@ -39,7 +39,7 @@ final class Plugin {
 	 *
 	 * @since 3.0.0
 	 */
-	public const VERSION = '3.3.0';
+	public const VERSION = '3.3.1';
 
 	/**
 	 * Plugin slug used in menu URLs, asset handles and CSS classes.

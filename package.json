@@ -1,6 +1,6 @@
 {
   "name": "loggedin",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "description": "Limit an account to a specific number of simultaneous logins across all devices.",
   "main": "loggedin.php",
   "private": true,
