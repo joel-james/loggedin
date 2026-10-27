@@ -29,6 +29,25 @@ const initApi = () => {
 	if ( loggedin.restNonce ) {
 		apiFetch.use( apiFetch.createNonceMiddleware( loggedin.restNonce ) );
 	}
+
+	/*
+	 * An idle session ended on the server answers with
+	 * `loggedin_idle_logout` and the login URL. Send the user there
+	 * instead of leaving the screen showing a failed request. Every
+	 * admin app on this screen (add-on pages too) shares this apiFetch.
+	 */
+	apiFetch.use( ( options, next ) =>
+		next( options ).catch( ( error ) => {
+			if (
+				'loggedin_idle_logout' === error?.code &&
+				error?.data?.login_url
+			) {
+				window.location.assign( error.data.login_url );
+			}
+
+			throw error;
+		} )
+	);
 };
 
 initApi();

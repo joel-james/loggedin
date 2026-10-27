@@ -2,7 +2,7 @@
 Contributors: joelcj91,foxelabs
 Tags: concurrent login, login limit, prevent account sharing, session management, force logout
 Donate link: https://paypal.me/JoelCJ
-Requires at least: 6.0
+Requires at least: 6.5
 Tested up to: 7.1
 Stable tag: 3.3.1
 Requires PHP: 7.4

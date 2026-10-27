@@ -32,7 +32,8 @@ export function* getItems() {
 		yield setItems( [] );
 
 		dispatch( noticesStore ).createErrorNotice(
-			error?.message || __( 'Failed to load addons.', 'loggedin' ),
+			error?.message ||
+				__( 'The add-ons list could not be loaded.', 'loggedin' ),
 			{ type: 'snackbar' }
 		);
 	}

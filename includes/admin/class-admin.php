@@ -118,19 +118,39 @@ final class Admin {
 	 * keep working through this refactor.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Replaces WordPress's footer on the screen.
 	 *
 	 * @return void
 	 */
 	public function register_menu(): void {
-		add_users_page(
-			// translators: %s lock icon.
-			sprintf( __( '%s Loggedin Settings', 'loggedin' ), '🔒' ),
+		$hook = add_users_page(
+			__( 'Loggedin', 'loggedin' ),
 			// translators: %s lock icon.
 			sprintf( __( '%s Loggedin', 'loggedin' ), '<span class="dashicons dashicons-lock"></span>' ),
 			'manage_options',
 			Plugin::SLUG,
 			array( $this, 'render_page' )
 		);
+
+		if ( $hook ) {
+			add_action( 'load-' . $hook, array( $this, 'replace_footer' ) );
+		}
+	}
+
+	/**
+	 * Empty WordPress's admin footer on this screen.
+	 *
+	 * The app shows its own footer (PageFooter) with Loggedin's links;
+	 * the stylesheet hides the empty `#wpfooter`. Every other admin
+	 * screen keeps WordPress's footer.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	public function replace_footer(): void {
+		add_filter( 'admin_footer_text', '__return_empty_string', 99 );
+		add_filter( 'update_footer', '__return_empty_string', 99 );
 	}
 
 	/**
@@ -138,20 +158,19 @@ final class Admin {
 	 *
 	 * The bundle's entry (`assets/src/admin.js`) looks for
 	 * `#loggedin-admin` and bails silently if it's missing.
-	 * `.loggedin-wrap` is the root selector every plugin stylesheet
-	 * hangs its rules under.
+	 * `.loggedin-admin` is the root every kit style is scoped under.
 	 *
-	 * We intentionally skip WordPress's `.wrap` wrapper — its default
-	 * `10px 20px 0 2px` margin puts a visible gap around the plugin
-	 * shell that the design doesn't want. Admin notices don't need
-	 * `.wrap` either: `<AdminNoticeSlot />` inside the React tree
-	 * relocates them into the correct spot on mount.
+	 * We intentionally skip WordPress's `.wrap` wrapper: the screen
+	 * lays out its own sidebar and header edge to edge. The app moves
+	 * admin notices into its content column on mount.
 	 *
 	 * @since 3.0.0
 	 *
 	 * @return void
 	 */
 	public function render_page(): void {
-		echo '<div id="loggedin-admin" class="loggedin-wrap"></div>';
+		echo '<div id="loggedin-admin" class="loggedin-admin">';
+		echo '<noscript><div class="notice notice-error"><p>' . esc_html__( 'The Loggedin settings need JavaScript. Turn it on in your browser to change them.', 'loggedin' ) . '</p></div></noscript>';
+		echo '</div>';
 	}
 }

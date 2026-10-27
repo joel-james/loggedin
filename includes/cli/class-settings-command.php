@@ -149,11 +149,21 @@ final class Settings_Command {
 		$key      = $this->validate_key( $args[0] );
 		$value    = (string) $args[1];
 		$settings = Settings::instance();
+		$typed    = $value;
 
-		$candidate = array_merge( $settings->all(), array( $key => $value ) );
+		// On/off settings take true/false, yes/no, on/off or 1/0.
+		if ( is_bool( $settings->defaults()[ $key ] ) ) {
+			$typed = filter_var( $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+		}
+
+		$candidate = array_merge( $settings->all(), array( $key => $typed ) );
 		$sanitized = $settings->sanitize( $candidate );
 
-		if ( ! isset( $sanitized[ $key ] ) || (string) $sanitized[ $key ] !== $value ) {
+		if (
+			null === $typed
+			|| ! isset( $sanitized[ $key ] )
+			|| ( is_bool( $typed ) ? $sanitized[ $key ] !== $typed : (string) $sanitized[ $key ] !== $value )
+		) {
 			WP_CLI::error(
 				sprintf(
 					/* translators: 1: submitted value, 2: setting key. */
@@ -171,7 +181,9 @@ final class Settings_Command {
 				/* translators: 1: setting key, 2: stored value. */
 				__( 'Updated %1$s to %2$s.', 'loggedin' ),
 				$key,
-				(string) $settings->get( $key )
+				is_bool( $settings->get( $key ) )
+					? wp_json_encode( $settings->get( $key ) )
+					: (string) $settings->get( $key )
 			)
 		);
 	}

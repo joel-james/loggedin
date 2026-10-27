@@ -121,13 +121,18 @@ final class Settings extends Endpoint {
 		$store   = Settings_Store::instance();
 		$current = $store->all();
 
-		$payload = array(
-			'maximum' => $request->offsetExists( 'maximum' )
-				? (int) $request->get_param( 'maximum' )
-				: $current['maximum'],
-			'logic'   => $request->offsetExists( 'logic' )
-				? (string) $request->get_param( 'logic' )
-				: $current['logic'],
+		// Start from what is stored, so keys this route doesn't take
+		// (`unlock`, `exempt_admins`, …) keep their values.
+		$payload = array_merge(
+			$current,
+			array(
+				'maximum' => $request->offsetExists( 'maximum' )
+					? (int) $request->get_param( 'maximum' )
+					: $current['maximum'],
+				'logic'   => $request->offsetExists( 'logic' )
+					? (string) $request->get_param( 'logic' )
+					: $current['logic'],
+			)
 		);
 
 		$store->update( $payload );

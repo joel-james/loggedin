@@ -29,7 +29,7 @@
  * Text Domain:       loggedin
  * Domain Path:       /languages
  * Requires PHP:      7.4
- * Requires at least: 6.0
+ * Requires at least: 6.5
  */
 
 namespace FoxeLabs\Loggedin;

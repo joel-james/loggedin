@@ -17,6 +17,8 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Admin;
 
+use FoxeLabs\Loggedin\Addons\Addons;
+use FoxeLabs\Loggedin\Auto_Logout\Settings as Auto_Logout_Settings;
 use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Plugin;
 
@@ -113,6 +115,7 @@ final class Assets {
 				array( 'wp-components' ),
 				$asset['version']
 			);
+			wp_style_add_data( self::HANDLE, 'rtl', 'replace' );
 		}
 	}
 
@@ -151,6 +154,7 @@ final class Assets {
 				'wp-data',
 				'wp-dom-ready',
 				'wp-element',
+				'wp-hooks',
 				'wp-i18n',
 				'wp-notices',
 			),
@@ -170,20 +174,41 @@ final class Assets {
 	 */
 	private function script_vars(): array {
 		$vars = array(
-			'version'   => Plugin::VERSION,
-			'slug'      => Plugin::SLUG,
-			'name'      => __( 'Loggedin', 'loggedin' ),
-			'page'      => self::ENTRY,
-			'restUrl'   => esc_url_raw( rest_url( Plugin::REST_NAMESPACE . '/' ) ),
-			'restNonce' => wp_create_nonce( 'wp_rest' ),
-			'adminUrl'  => esc_url_raw( admin_url() ),
-			'logics'    => $this->logics_payload(),
+			'version'      => Plugin::VERSION,
+			'slug'         => Plugin::SLUG,
+			'name'         => __( 'Loggedin', 'loggedin' ),
+			'page'         => self::ENTRY,
+			'restUrl'      => esc_url_raw( rest_url( Plugin::REST_NAMESPACE . '/' ) ),
+			'restNonce'    => wp_create_nonce( 'wp_rest' ),
+			'adminUrl'     => esc_url_raw( admin_url() ),
+			'wpVersion'    => get_bloginfo( 'version' ),
+			'phpVersion'   => PHP_VERSION,
+			'urls'         => array(
+				'docs'     => 'https://docs.foxelabs.com/software/loggedin/',
+				'support'  => 'https://wordpress.org/support/plugin/loggedin/',
+				'review'   => 'https://wordpress.org/support/plugin/loggedin/reviews/#new-post',
+				'contact'  => 'https://foxelabs.com/contact',
+				'foxelabs' => 'https://foxelabs.com',
+			),
+			'logics'       => $this->logics_payload(),
+			'activeAddons' => $this->active_addon_slugs(),
+			'roles'        => array_map( 'translate_user_role', wp_roles()->get_names() ),
+			'autoLogout'   => array(
+				'max' => array(
+					'idle_timeout'      => Auto_Logout_Settings::MAX_IDLE_TIMEOUT,
+					'warning'           => Auto_Logout_Settings::MAX_WARNING,
+					'session_lifetime'  => Auto_Logout_Settings::MAX_SESSION_LIFETIME,
+					'remember_lifetime' => Auto_Logout_Settings::MAX_REMEMBER_LIFETIME,
+				),
+			),
+			'schema'       => $this->settings_schema(),
 		);
 
 		/**
 		 * Filter the localised script vars for the admin app.
 		 *
 		 * @since 3.0.0
+		 * @since 3.4.0 Adds `wpVersion`, `phpVersion`, `urls`, `activeAddons`, `roles`, `autoLogout` and `schema`.
 		 *
 		 * @param array $vars Vars passed into the React tree.
 		 */
@@ -204,15 +229,15 @@ final class Assets {
 		$logics = array(
 			'logout_oldest' => array(
 				'label' => __( 'Logout Oldest', 'loggedin' ),
-				'desc'  => __( 'When the concurrent login limit is reached, a new login will automatically end the single oldest active session. This feature works only with user meta session storage.', 'loggedin' ),
+				'desc'  => __( 'The new login ends the oldest session. Needs WordPress’s default session storage (user meta).', 'loggedin' ),
 			),
 			'allow'         => array(
 				'label' => __( 'Logout All', 'loggedin' ),
-				'desc'  => __( 'When the concurrent login limit is reached, a new login will automatically terminate all previously active sessions.', 'loggedin' ),
+				'desc'  => __( 'The new login ends every other session.', 'loggedin' ),
 			),
 			'block'         => array(
 				'label' => __( 'Block New', 'loggedin' ),
-				'desc'  => __( 'If the concurrent login limit is reached, do not allow new logins. Users must then wait for existing login sessions to expire.', 'loggedin' ),
+				'desc'  => __( 'The new login is refused until an older session ends or expires.', 'loggedin' ),
 			),
 		);
 
@@ -234,5 +259,88 @@ final class Assets {
 		}
 
 		return $payload;
+	}
+
+	/**
+	 * Slugs of the add-ons installed and registered on this site.
+	 *
+	 * The admin app hides its one-line add-on hints for anything listed
+	 * here, so a site never sees a pitch for an add-on it already runs.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return array<int, string>
+	 */
+	private function active_addon_slugs(): array {
+		$slugs = array();
+
+		foreach ( Addons::instance()->get_registered_addons_public() as $args ) {
+			if ( ! empty( $args['slug'] ) ) {
+				$slugs[] = (string) $args['slug'];
+			}
+		}
+
+		return $slugs;
+	}
+
+	/**
+	 * Pages, cards and fields declared by add-ons in PHP.
+	 *
+	 * Lets an add-on put its settings on the screen without shipping
+	 * an admin bundle: core draws the fields with its own controls and
+	 * the page header's Save saves them. Each field's `option` must be
+	 * registered with `show_in_rest`.
+	 *
+	 * Shape:
+	 *
+	 *     array(
+	 *         'pages'  => array(
+	 *             array( 'id' => 'my-page', 'title' => '…', 'group' => 'settings', 'icon' => 'clock', 'after' => 'login-limits' ),
+	 *         ),
+	 *         'cards'  => array(
+	 *             array( 'id' => 'my-card', 'page' => 'my-page', 'title' => '…', 'description' => '…' ),
+	 *         ),
+	 *         'fields' => array(
+	 *             array( 'card' => 'my-card', 'option' => 'my_option', 'key' => 'minutes', 'type' => 'number', 'label' => '…', 'unit' => 'minutes', 'help' => '…', 'min' => 1 ),
+	 *         ),
+	 *     )
+	 *
+	 * A page joins the sidebar group `group` names: `settings` (the
+	 * default), `manage` or `more`. A card goes on the page `page` names,
+	 * a core page (`login-limits`, `auto-logout`, `sessions`) or one
+	 * declared here; without one it goes on Login limits. Field `type`
+	 * is one of `number`, `select`, `toggle` or `text`. `number` takes
+	 * `unit`, `min` and `max`; `select` takes `options` (`value`,
+	 * `label`, optional `help`) and `cast` (`int`); any field takes
+	 * `default` and `show_if` (`key`, `equals`).
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return array{pages: array<int, array>, cards: array<int, array>, fields: array<int, array>}
+	 */
+	private function settings_schema(): array {
+		/**
+		 * Filter the settings pages, cards and fields add-ons declare.
+		 *
+		 * @since 3.4.0
+		 *
+		 * @param array $schema `pages`, `cards` and `fields` lists.
+		 */
+		$schema = (array) apply_filters(
+			'loggedin_settings_schema',
+			array(
+				'pages'  => array(),
+				'cards'  => array(),
+				'fields' => array(),
+			)
+		);
+
+		$lists = array();
+
+		foreach ( array( 'pages', 'cards', 'fields' ) as $key ) {
+			$lists[ $key ] = array_values( array_filter( (array) ( $schema[ $key ] ?? array() ), 'is_array' ) );
+		}
+
+		return $lists;
 	}
 }

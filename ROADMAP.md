@@ -177,8 +177,9 @@ Build on the Phase A components. Each item lists the approach, then what to
 check before or while building it.
 
 ### B1. Blocked-login self-unlock (highest priority)
-When Block New rejects a login, the password has already been verified. Use
-that moment:
+`wp_authenticate_user` runs before WordPress checks the password, so Block
+New checks it itself first: only a correct password learns the limit was
+reached (a wrong one gets WordPress's own error). Use that moment:
 - Issue a short-lived unlock token and store it hashed in its own user meta.
   It expires after 15 minutes and is single-use.
 - Append "Email me a link to sign out my other devices" to the error.
@@ -216,7 +217,10 @@ that moment:
   History add-on and its dormant-accounts report.
 - Row action and bulk action: "Sign out everywhere".
 - Counts only, with no per-device detail (constraint 3).
-- Add a WP-CLI `last_login` field to `sessions list`.
+- ~~Add a WP-CLI `last_login` field to `sessions list`.~~ Dropped: that
+  command lists one user's sessions, and each row already has its `login`
+  time. The per-user value is plain user meta (`wp user meta get <user>
+  loggedin_last_login`).
 
 ### B4. "Your sessions" on the profile screen
 - On the user's own profile, list their sessions: device, IP (shortened),
@@ -275,9 +279,11 @@ a port, not a rebuild.
 - Keep the activity stamp in its own user meta row, never in
   `session_tokens` (constraint 2). Port
   `test_stamping_never_writes_the_session_tokens_blob` with it.
-- **The add-on still active:** core detects it, leaves its own guard off so
-  nothing is enforced twice, and shows one dismissible Notice saying auto
-  logout is now part of Loggedin and the add-on can be deactivated.
+- **The add-on still active:** core stops the add-on from booting (it
+  unhooks the add-on's `loggedin_init` callback) and runs auto logout itself
+  from the same settings, so nothing is enforced twice and the add-on's panel
+  never loads. A Notice on Plugins and on Loggedin's screen says the add-on
+  can be deactivated.
 - **Fix in the port:** an idle logout during a REST request returns a bare
   401 that neither admin React app handles. Return an error the apps
   recognise and send the user to the login screen.
@@ -395,14 +401,21 @@ Settled 2026-09-26 unless dated otherwise.
 
 ## Progress
 
-- [ ] A1 kit components and tokens, ported from Convocept
-- [ ] A2 screen: sidebar, Login limits, Sessions, Add-ons, Help
-- [ ] A3 `loggedin_settings_schema` and legacy panel/tab compatibility —
-      written on `feature/plugin-ui` (`5e27361`, Night shift); carry over
-      onto the kit
+- [x] A1 kit components and tokens, ported from Convocept — branch
+      `feature/admin-kit`, 2026-10-26
+- [x] A2 screen: sidebar, Login limits, Auto logout, Sessions, Add-ons, Help
+      (BundleCard waits for the bundle plan in Phase D)
+- [x] A3 `loggedin_settings_schema` (pages, cards, fields) and legacy
+      panel/tab compatibility, checked with Limit Per Role and Real-time Logout
 - [ ] A3 minimum-core-version Notice for outdated add-ons
-- [ ] A5 QA
+- [ ] A5 QA (desktop and 375px checked; keyboard, RTL, colour schemes, WP 6.5 left)
 - [ ] Phase A4 — add-on UI migrations
-- [ ] Phase B — core features B1–B8
+- [x] B8 auto logout in core, add-on takeover, REST idle-logout error —
+      `feature/admin-kit`, 2026-10-26 (left: Freemius licence check, stop
+      selling, docs move, archive the add-on repo)
+- [x] B1 self-unlock and "Don't limit administrators", B3 Users list, B5
+      password-change sign-out — `feature/admin-kit`, 2026-10-26 (left: the
+      one-time "exempt administrators" notice from decision 6)
+- [ ] Phase B — B2, B4, B6, B7
 - [ ] Phase C — Login History, Membership Limits, Login Alerts, Active Sessions upgrade
 - [ ] Phase D — bundle plan, discovery

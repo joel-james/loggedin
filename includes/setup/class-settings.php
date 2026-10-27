@@ -137,8 +137,14 @@ final class Settings {
 		return apply_filters(
 			'loggedin_settings_defaults',
 			array(
-				'maximum' => 1,
-				'logic'   => 'allow',
+				'maximum'          => 1,
+				'logic'            => 'allow',
+				// New installs get these on; the Upgrader turns the
+				// first two off on sites upgrading from before 3.4.0,
+				// so an existing site behaves the same until changed.
+				'unlock'           => true,
+				'exempt_admins'    => true,
+				'password_signout' => true,
 			)
 		);
 	}
@@ -227,13 +233,22 @@ final class Settings {
 						'type'                 => 'object',
 						'additionalProperties' => false,
 						'properties'           => array(
-							'maximum' => array(
+							'maximum'          => array(
 								'type'    => 'integer',
 								'minimum' => 1,
 							),
-							'logic'   => array(
+							'logic'            => array(
 								'type' => 'string',
 								'enum' => self::ALLOWED_LOGICS,
+							),
+							'unlock'           => array(
+								'type' => 'boolean',
+							),
+							'exempt_admins'    => array(
+								'type' => 'boolean',
+							),
+							'password_signout' => array(
+								'type' => 'boolean',
 							),
 						),
 					),
@@ -275,6 +290,12 @@ final class Settings {
 			$out['logic'] = in_array( $logic, self::ALLOWED_LOGICS, true )
 				? $logic
 				: $defaults['logic'];
+		}
+
+		foreach ( array( 'unlock', 'exempt_admins', 'password_signout' ) as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$out[ $key ] = (bool) $input[ $key ];
+			}
 		}
 
 		return $out;

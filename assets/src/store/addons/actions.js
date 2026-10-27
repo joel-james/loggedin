@@ -65,13 +65,16 @@ export function* refresh() {
 		yield setItems( Array.isArray( data?.items ) ? data.items : [] );
 
 		dispatch( noticesStore ).createSuccessNotice(
-			__( 'Addons refreshed.', 'loggedin' ),
+			__( 'Add-ons list refreshed.', 'loggedin' ),
 			{ type: 'snackbar' }
 		);
 	} catch ( error ) {
 		dispatch( noticesStore ).createErrorNotice(
 			error?.message ||
-				__( 'Could not refresh the addons list.', 'loggedin' ),
+				__(
+					'The add-ons list could not be refreshed. Try again.',
+					'loggedin'
+				),
 			{ type: 'snackbar' }
 		);
 	} finally {
@@ -85,7 +88,7 @@ export function* refresh() {
  * @param {number} id  Addon Freemius id.
  * @param {string} key License key.
  *
- * @return {{success: boolean, error?: string}}
+ * @return {{success: boolean, error?: string}} Whether it worked, and why not.
  */
 export function* activateLicense( id, key ) {
 	try {
@@ -132,7 +135,7 @@ export function* activateLicense( id, key ) {
  *
  * @param {number} id Addon Freemius id.
  *
- * @return {{success: boolean, error?: string}}
+ * @return {{success: boolean, error?: string}} Whether it worked, and why not.
  */
 export function* deactivateLicense( id ) {
 	try {

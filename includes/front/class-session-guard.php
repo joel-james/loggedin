@@ -53,7 +53,7 @@ final class Session_Guard {
 	 * @since 3.0.0
 	 */
 	protected function init(): void {
-		add_filter( 'wp_authenticate_user', array( $this, 'validate_block_logic' ) );
+		add_filter( 'wp_authenticate_user', array( $this, 'validate_block_logic' ), 10, 2 );
 		add_filter( 'check_password', array( $this, 'validate_allow_logic' ), 10, 4 );
 	}
 
@@ -102,13 +102,21 @@ final class Session_Guard {
 	/**
 	 * Enforce `block` mode before authentication completes.
 	 *
-	 * @since 3.0.0
+	 * `wp_authenticate_user` runs before WordPress checks the password,
+	 * so the password is checked here first. A wrong one passes
+	 * through to WordPress's own "incorrect password" error: only the
+	 * account's owner learns the limit was reached, and only they are
+	 * offered the link to sign out the other devices.
 	 *
-	 * @param mixed $user WP_User on success, WP_Error on prior failure.
+	 * @since 3.0.0
+	 * @since 3.4.0 Checks the password first and offers the unlock link.
+	 *
+	 * @param mixed  $user     WP_User on success, WP_Error on prior failure.
+	 * @param string $password Password the visitor typed.
 	 *
 	 * @return mixed
 	 */
-	public function validate_block_logic( $user ) {
+	public function validate_block_logic( $user, $password = '' ) {
 		// Pre-existing error from earlier in the auth pipeline —
 		// propagate it untouched, don't replace it with ours.
 		if ( is_wp_error( $user ) ) {
@@ -117,20 +125,27 @@ final class Session_Guard {
 
 		$logic = (string) Settings::instance()->get( 'logic', 'allow' );
 
-		if ( 'block' === $logic && $this->has_limit_reached( (int) $user->ID ) ) {
-			/**
-			 * Fires when a login is blocked by the concurrent-session limit.
-			 *
-			 * @since 2.0.0
-			 *
-			 * @param int $user_id User id whose login was blocked.
-			 */
-			do_action( 'loggedin_login_blocked', $user->ID );
-
-			return new WP_Error( 'login_limit_reached', $this->limit_error_message() );
+		if ( 'block' !== $logic || ! $this->has_limit_reached( (int) $user->ID ) ) {
+			return $user;
 		}
 
-		return $user;
+		if ( ! wp_check_password( (string) $password, $user->user_pass, $user->ID ) ) {
+			return $user;
+		}
+
+		/**
+		 * Fires when a login is blocked by the concurrent-session limit.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param int $user_id User id whose login was blocked.
+		 */
+		do_action( 'loggedin_login_blocked', $user->ID );
+
+		return new WP_Error(
+			'login_limit_reached',
+			$this->limit_error_message() . Unlock::instance()->offer( $user )
+		);
 	}
 
 	/**
@@ -253,21 +268,28 @@ final class Session_Guard {
 	 * Should this user bypass the limit entirely?
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Administrators bypass it while `exempt_admins` is on.
 	 *
 	 * @param int $user_id User id.
 	 *
 	 * @return bool
 	 */
 	protected function is_bypassed( int $user_id ): bool {
+		// "Don't limit administrators": anyone who can manage the site.
+		$bypass = Settings::instance()->get( 'exempt_admins', false )
+			&& user_can( $user_id, 'manage_options' );
+
 		/**
 		 * Filter to bypass the concurrent-session check for a user.
 		 *
 		 * @since 1.0.0
+		 * @since 3.4.0 Defaults to true for administrators while the
+		 *              "Don't limit administrators" setting is on.
 		 *
-		 * @param bool $bypass  Default false.
+		 * @param bool $bypass  Whether the user skips the limit.
 		 * @param int  $user_id User id being checked.
 		 */
-		return (bool) apply_filters( 'loggedin_bypass', false, $user_id );
+		return (bool) apply_filters( 'loggedin_bypass', $bypass, $user_id );
 	}
 
 	/**

@@ -1,0 +1,1312 @@
+/**
+ * Foxe Plugin Admin Kit, compiled for Loggedin.
+ *
+ * Tokens and component styles from the Foxe Plugin Admin Kit design system,
+ * with the `loggedin-` prefix so two Foxe plugins on one site never
+ * collide. Everything is scoped under `.loggedin-admin` (and `.loggedin-modal`,
+ * which WordPress renders outside it). The accent is the user's
+ * admin theme colour: this file reads `--wp-admin-theme-color` and never
+ * sets it, so WordPress components and our own parts follow the colour
+ * scheme each user picked.
+ */
+
+/* stylelint-disable no-descending-specificity -- Icons and help lines take their colour and spacing from the part they sit in (nav item, notice, card footer); those parts never nest, so the order of these rules never decides a conflict. */
+
+/* Modals render outside the screen's root, so they carry the tokens too. */
+.loggedin-admin,
+.loggedin-modal {
+	--loggedin-theme: var(--wp-admin-theme-color, #3858e9);
+	--loggedin-theme-hover: var(--wp-admin-theme-color-darker-10, #2145e6);
+	--loggedin-on-theme: #fff;
+	--loggedin-ground: #f0f0f1;
+	--loggedin-surface: #fff;
+	--loggedin-surface-weak: #f0f0f0;
+	--loggedin-surface-sunken: #fcfcfc;
+	--loggedin-stroke-card: #e0e0e0;
+	--loggedin-stroke-weak: #f0f0f0;
+	--loggedin-stroke-tile: #dcdcde;
+	--loggedin-stroke-control: #949494;
+	--loggedin-fg: #1e1e1e;
+	--loggedin-fg-muted: #50575e;
+	--loggedin-fg-subtle: #757575;
+	--loggedin-fg-disabled: #949494;
+	--loggedin-success-bg: #eff9f1;
+	--loggedin-success-stroke: #b8e6bf;
+	--loggedin-success-icon: #008a20;
+	--loggedin-success-dot: #4ab866;
+	--loggedin-warning-bg: #fef8ee;
+	--loggedin-warning-stroke: #f0c35f;
+	--loggedin-warning-icon: #8a6116;
+	--loggedin-warning-dot: #f0b849;
+	--loggedin-error-bg: #fcf0f1;
+	--loggedin-error-stroke: #f2b8b8;
+	--loggedin-danger: #cc1818;
+	--loggedin-info-bg: #f3f9ff;
+	--loggedin-info-stroke: #adc6e2;
+	--loggedin-info-icon: #0a4b78;
+	--loggedin-star: #dba617;
+	--loggedin-font-mono: ui-monospace, sfmono-regular, menlo, consolas, monospace;
+	--loggedin-space-4: 16px;
+	--loggedin-space-5: 20px;
+	--loggedin-space-6: 24px;
+	--loggedin-space-7: 32px;
+	--loggedin-space-8: 48px;
+	--loggedin-radius-control: 2px;
+	--loggedin-radius-surface: 8px;
+	--loggedin-radius-pill: 999px;
+	--loggedin-shadow-popover: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 12px 32px rgba(0, 0, 0, 0.14);
+	--loggedin-shadow-sticky: 0 2px 6px rgba(0, 0, 0, 0.04);
+	--loggedin-sidebar-width: 248px;
+	--loggedin-nav-item-height: 36px;
+	--loggedin-header-height: 72px;
+	--loggedin-control-height: 40px;
+	--loggedin-number-width: 180px;
+	--loggedin-content-max: 720px;
+}
+
+.loggedin-admin {
+
+	/* WordPress's own admin bar height (46px below 782px), so a change there moves us too. */
+	--loggedin-admin-bar: var(--wp-admin--admin-bar--height, 32px);
+
+	display: grid;
+	grid-template-columns: var(--loggedin-sidebar-width) minmax(0, 1fr);
+	min-height: calc(100vh - var(--loggedin-admin-bar));
+	margin-inline-start: -20px;
+
+	/* No background of our own: WordPress's admin background shows through, so the screen matches the rest of wp-admin. */
+	color: var(--loggedin-fg);
+	font-size: 13px;
+	line-height: 20px;
+}
+
+/*
+ * This stylesheet loads on the plugin screen only. Keyboard focus scrolled
+ * into view lands below the sticky admin bar and page header, not under them.
+ */
+html {
+	scroll-padding-top: calc(var(--wp-admin--admin-bar--height, 32px) + 88px);
+}
+
+.loggedin-admin *,
+.loggedin-admin *::before,
+.loggedin-admin *::after {
+	box-sizing: border-box;
+}
+
+/*
+ * Plain links in the theme colour. :where() keeps this at the weight of one
+ * class, so parts that colour their own links (sidebar items, footer) win.
+ */
+.loggedin-admin :where(a:not(.components-button)) {
+	color: var(--loggedin-theme);
+}
+
+.loggedin-admin :where(a:not(.components-button)):hover {
+	color: var(--loggedin-theme-hover);
+}
+
+.loggedin-icon {
+	flex-shrink: 0;
+}
+
+/* WordPress fills every icon inside a button; ours are stroke icons. */
+.loggedin-admin .components-button .loggedin-icon {
+	fill: none;
+}
+
+/* An icon after a button's label (external links) keeps the label's gap. */
+.loggedin-admin .components-button > .loggedin-icon:not(:first-child) {
+	margin-inline-start: 4px;
+}
+
+/* Sidebar: sticky, so it stays in reach on long pages. */
+.loggedin-sidebar {
+	position: sticky;
+	top: var(--loggedin-admin-bar);
+	align-self: start;
+	height: calc(100vh - var(--loggedin-admin-bar));
+	overflow-y: auto;
+	padding: 20px 12px;
+	border-inline-end: 1px solid var(--loggedin-stroke-card);
+	background: var(--loggedin-surface);
+}
+
+.loggedin-brand {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 0 8px 4px;
+}
+
+.loggedin-brand__name {
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 20px;
+}
+
+.loggedin-brand__meta {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-dot {
+	display: inline-block;
+	flex-shrink: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: var(--loggedin-radius-pill);
+	background: var(--loggedin-success-dot);
+}
+
+.loggedin-dot--warning {
+	background: var(--loggedin-warning-dot);
+}
+
+.loggedin-dot--error {
+	background: var(--loggedin-danger);
+}
+
+.loggedin-dot--off {
+	background: var(--loggedin-fg-disabled);
+}
+
+.loggedin-admin .loggedin-nav-group {
+	margin: 20px 0 4px;
+	padding: 0 12px;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 16px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--loggedin-fg-subtle);
+}
+
+.loggedin-nav-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.loggedin-nav-list li {
+	margin: 0;
+}
+
+.loggedin-admin .loggedin-nav-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: var(--loggedin-nav-item-height);
+	padding: 0 12px;
+	border-radius: var(--loggedin-radius-control);
+	color: var(--loggedin-fg);
+	text-decoration: none;
+}
+
+.loggedin-nav-item .loggedin-icon {
+	color: var(--loggedin-fg-subtle);
+}
+
+.loggedin-admin .loggedin-nav-item:hover {
+	background: var(--loggedin-surface-weak);
+	color: var(--loggedin-fg);
+}
+
+.loggedin-admin .loggedin-nav-item:focus {
+	outline: 2px solid var(--loggedin-theme);
+	outline-offset: -2px;
+	box-shadow: none;
+}
+
+.loggedin-admin .loggedin-nav-item[aria-current="page"] {
+	background: color-mix(in srgb, var(--loggedin-theme) 8%, var(--loggedin-surface));
+	color: var(--loggedin-theme);
+	font-weight: 600;
+}
+
+.loggedin-nav-item[aria-current="page"] .loggedin-icon {
+	color: var(--loggedin-theme);
+}
+
+.loggedin-nav-item__label {
+	flex-grow: 1;
+}
+
+.loggedin-badge {
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	border-radius: var(--loggedin-radius-pill);
+	background: var(--loggedin-theme);
+	color: var(--loggedin-on-theme);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 20px;
+	text-align: center;
+}
+
+/* Main column */
+.loggedin-main {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+/* Sticky, so Save stays in reach while scrolling a long page. */
+.loggedin-header {
+	position: sticky;
+	top: var(--loggedin-admin-bar);
+	z-index: 10;
+	padding: 0 var(--loggedin-space-7);
+	border-bottom: 1px solid var(--loggedin-stroke-card);
+	background: var(--loggedin-surface);
+}
+
+.loggedin-header__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	max-width: var(--loggedin-content-max);
+	min-height: var(--loggedin-header-height);
+	padding: 12px 0;
+}
+
+.loggedin-admin .loggedin-header__title {
+	flex-grow: 1;
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
+	font-weight: 600;
+	line-height: 28px;
+	color: var(--loggedin-fg);
+}
+
+/* Focus moves here when the page changes; the title isn't a control, so no ring. */
+.loggedin-admin .loggedin-header__title:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.loggedin-header__status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-header__status--error {
+	color: var(--loggedin-danger);
+}
+
+.loggedin-header__actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.loggedin-section-select {
+	display: none;
+}
+
+.loggedin-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--loggedin-space-4);
+	width: 100%;
+	max-width: calc(var(--loggedin-content-max) + 2 * var(--loggedin-space-7));
+	padding: var(--loggedin-space-7) var(--loggedin-space-7) var(--loggedin-space-8);
+}
+
+/* Notices from WordPress and other plugins, moved here from above the screen. */
+.loggedin-wp-notices {
+	display: flex;
+	flex-direction: column;
+	gap: var(--loggedin-space-4);
+}
+
+.loggedin-wp-notices:empty {
+	display: none;
+}
+
+.loggedin-admin .loggedin-wp-notices > * {
+	display: block;
+	margin: 0;
+}
+
+.loggedin-content--wide {
+	max-width: none;
+}
+
+/* PageFooter: replaces WordPress's footer, which this screen hides. */
+.loggedin-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px 24px;
+	margin-top: auto;
+	padding: 16px var(--loggedin-space-7);
+	border-top: 1px solid var(--loggedin-stroke-card);
+	font-size: 12px;
+	line-height: 18px;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-footer__links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 20px;
+}
+
+.loggedin-admin .loggedin-footer a {
+	color: var(--loggedin-fg-muted);
+	text-decoration: none;
+}
+
+.loggedin-admin .loggedin-footer a:hover {
+	color: var(--loggedin-fg);
+	text-decoration: underline;
+}
+
+/* Rating stars in a review link, in WordPress.org's star colour. */
+.loggedin-footer__stars {
+	color: var(--loggedin-star);
+	letter-spacing: 1px;
+}
+
+/* This stylesheet loads on the plugin screen only, so these reach no other admin page. */
+#wpfooter {
+	display: none;
+}
+
+#wpbody-content {
+	padding-bottom: 0;
+}
+
+/* Card */
+.loggedin-card {
+	padding: var(--loggedin-space-6);
+	border: 1px solid var(--loggedin-stroke-card);
+	border-radius: var(--loggedin-radius-surface);
+	background: var(--loggedin-surface);
+}
+
+.loggedin-card__head {
+	display: flex;
+	align-items: center;
+	gap: var(--loggedin-space-4);
+}
+
+.loggedin-card__head > .loggedin-card__text {
+	flex-grow: 1;
+	min-width: 0;
+}
+
+/* An optional icon before the title, on a light tile. */
+.loggedin-card__icon {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	align-self: flex-start;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--loggedin-radius-surface);
+	background: var(--loggedin-surface-weak);
+	color: var(--loggedin-fg);
+}
+
+.loggedin-admin .loggedin-card__title {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 20px;
+	color: var(--loggedin-fg);
+}
+
+.loggedin-admin .loggedin-card__desc {
+	margin: 4px 0 0;
+	font-size: 13px;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-card__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--loggedin-space-5);
+	margin-top: var(--loggedin-space-5);
+}
+
+.loggedin-card__footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: var(--loggedin-space-5);
+	padding-top: var(--loggedin-space-5);
+	border-top: 1px solid var(--loggedin-stroke-weak);
+}
+
+.loggedin-admin .loggedin-card__footer > .loggedin-help:first-child {
+	flex-grow: 1;
+	margin: 0;
+}
+
+.loggedin-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	margin: 8px 0 0;
+}
+
+/* Help and errors */
+.loggedin-admin .loggedin-help {
+	margin: 8px 0 0;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-fg-subtle);
+}
+
+.loggedin-admin .loggedin-error {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+	margin: 8px 0 0;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-danger);
+}
+
+.loggedin-admin .loggedin-help--warning {
+	color: var(--loggedin-warning-icon);
+}
+
+/*
+ * WordPress controls: core sizes, borders and fonts, untouched, so fields
+ * look the same on every WordPress version. Only labels and help lines are
+ * restyled, so our own labels (legends, ColorField) match core ones. The
+ * core class names used here are the only ones this file depends on,
+ * besides the snackbars below; keep it that way.
+ */
+.loggedin-admin .components-base-control__label,
+.loggedin-admin .components-input-control__label,
+.loggedin-admin .loggedin-label {
+	display: block;
+	margin: 0 0 8px;
+	padding: 0;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 16px;
+	text-transform: uppercase;
+	color: var(--loggedin-fg);
+}
+
+.loggedin-admin .components-base-control__help {
+	margin-top: 8px;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-fg-subtle);
+}
+
+/* Invalid fields: our aria-invalid, not a core class, picks the input. */
+.loggedin-admin .loggedin-field--invalid [aria-invalid="true"] {
+	border-color: var(--loggedin-danger);
+	box-shadow: 0 0 0 0.5px var(--loggedin-danger);
+}
+
+/* Text and select fields fill the card. */
+.loggedin-field--text,
+.loggedin-field--select {
+	width: 100%;
+}
+
+/* NumberField: the unit sits inside the field's frame. */
+.loggedin-affix {
+	display: flex;
+	align-items: center;
+	width: var(--loggedin-number-width);
+	height: var(--loggedin-control-height);
+	border: 1px solid var(--loggedin-stroke-control);
+	border-radius: var(--loggedin-radius-control);
+	background: var(--loggedin-surface);
+}
+
+.loggedin-affix:focus-within {
+	border-color: var(--loggedin-theme);
+	box-shadow: 0 0 0 1px var(--loggedin-theme);
+}
+
+.loggedin-affix--invalid,
+.loggedin-affix--invalid:focus-within {
+	border-color: var(--loggedin-danger);
+	box-shadow: 0 0 0 0.5px var(--loggedin-danger);
+}
+
+.loggedin-admin .loggedin-affix input {
+	flex-grow: 1;
+	min-width: 0;
+	height: 100%;
+	min-height: 0;
+	margin: 0;
+	padding: 0 12px;
+	border: 0;
+	border-radius: var(--loggedin-radius-control);
+	background: transparent;
+	box-shadow: none;
+	font-size: 13px;
+	color: var(--loggedin-fg);
+	outline: 0;
+}
+
+/* Beats WordPress's own input and invalid-field borders: the frame draws the edge. */
+.loggedin-admin .loggedin-affix input:focus,
+.loggedin-admin .loggedin-field--invalid .loggedin-affix input {
+	border: 0;
+	box-shadow: none;
+	outline: 0;
+}
+
+/* No stepper arrows: the unit sits where they would. */
+.loggedin-affix input[type="number"] {
+	-moz-appearance: textfield;
+}
+
+.loggedin-affix input::-webkit-inner-spin-button,
+.loggedin-affix input::-webkit-outer-spin-button {
+	margin: 0;
+	-webkit-appearance: none;
+}
+
+.loggedin-affix__unit {
+	padding-inline-end: 12px;
+	color: var(--loggedin-fg-subtle);
+	white-space: nowrap;
+}
+
+/* Toggle: medium label, help under it */
+.loggedin-toggle .components-toggle-control__label,
+.loggedin-toggle .components-toggle-control .components-base-control__field label {
+	font-size: 13px;
+	font-weight: 500;
+	text-transform: none;
+}
+
+/* CheckboxList */
+.loggedin-checks {
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.loggedin-checks__items {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 24px;
+}
+
+/* ChoiceTiles */
+.loggedin-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.loggedin-tiles--pairs {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.loggedin-tile {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 16px;
+	border: 1px solid var(--loggedin-stroke-tile);
+	border-radius: var(--loggedin-radius-surface);
+	background: var(--loggedin-surface);
+	cursor: pointer;
+}
+
+.loggedin-tile--on {
+	border-color: var(--loggedin-theme);
+	box-shadow: inset 0 0 0 1px var(--loggedin-theme);
+	background: color-mix(in srgb, var(--loggedin-theme) 4%, var(--loggedin-surface));
+}
+
+.loggedin-tile:focus-within {
+	outline: 2px solid var(--loggedin-theme);
+	outline-offset: 2px;
+}
+
+.loggedin-tile__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 500;
+}
+
+/*
+ * The radio is drawn here in full (appearance: none), not by restyling
+ * WordPress's forms.css radio, so a change to core's radio can't leave a
+ * checked tile with an invisible dot.
+ */
+.loggedin-admin .loggedin-tile input[type="radio"] {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	min-width: 16px;
+	height: 16px;
+	margin: 0;
+	padding: 0;
+	border: 1px solid var(--loggedin-fg);
+	border-radius: 50%;
+	background: var(--loggedin-surface);
+	box-shadow: none;
+	appearance: none;
+}
+
+.loggedin-admin .loggedin-tile input[type="radio"]::before {
+	content: none;
+}
+
+.loggedin-admin .loggedin-tile input[type="radio"]:checked {
+	border-color: var(--loggedin-theme);
+	background: var(--loggedin-theme);
+}
+
+.loggedin-admin .loggedin-tile input[type="radio"]:checked::after {
+	content: "";
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--loggedin-on-theme);
+}
+
+/* The tile draws the focus ring (focus-within), so the radio needs none. */
+.loggedin-admin .loggedin-tile input[type="radio"]:focus {
+	outline: 0;
+	box-shadow: none;
+}
+
+.loggedin-tile__desc {
+	padding-inline-start: 24px;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-fg-muted);
+}
+
+/* Notice */
+.loggedin-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 12px 16px;
+	border: 1px solid var(--loggedin-info-stroke);
+	border-radius: var(--loggedin-radius-surface);
+	background: var(--loggedin-info-bg);
+}
+
+.loggedin-notice > .loggedin-icon {
+	color: var(--loggedin-info-icon);
+}
+
+.loggedin-notice--success {
+	border-color: var(--loggedin-success-stroke);
+	background: var(--loggedin-success-bg);
+}
+
+.loggedin-notice--success > .loggedin-icon {
+	color: var(--loggedin-success-icon);
+}
+
+.loggedin-notice--warning {
+	border-color: var(--loggedin-warning-stroke);
+	background: var(--loggedin-warning-bg);
+}
+
+.loggedin-notice--warning > .loggedin-icon {
+	color: var(--loggedin-warning-icon);
+}
+
+.loggedin-notice--error {
+	border-color: var(--loggedin-error-stroke);
+	background: var(--loggedin-error-bg);
+}
+
+.loggedin-notice--error > .loggedin-icon {
+	color: var(--loggedin-danger);
+}
+
+.loggedin-notice__body {
+	flex-grow: 1;
+	min-width: 0;
+}
+
+.loggedin-notice__title {
+	font-weight: 600;
+}
+
+.loggedin-notice__text {
+	margin: 2px 0 0;
+}
+
+.loggedin-notice__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.loggedin-admin .loggedin-notice__actions .components-button.is-secondary {
+	background: transparent;
+}
+
+.loggedin-admin .loggedin-notice__dismiss {
+	margin: -6px -8px 0 0;
+	color: var(--loggedin-fg);
+}
+
+/* StatusList */
+.loggedin-status-list {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.loggedin-admin .loggedin-status-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0;
+	padding: 10px 0;
+	border-top: 1px solid var(--loggedin-stroke-weak);
+}
+
+.loggedin-status-item:first-child {
+	border-top: 0;
+}
+
+.loggedin-status-item__icon {
+	display: inline-flex;
+}
+
+.loggedin-status-item__icon--yes {
+	color: var(--loggedin-success-icon);
+}
+
+.loggedin-status-item__icon--no {
+	color: var(--loggedin-fg-disabled);
+}
+
+.loggedin-status-item__value {
+	margin-inline-start: -4px;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-status-item__value::before {
+	content: "· ";
+}
+
+.loggedin-status-item__value--end {
+	margin-inline-start: auto;
+	font-variant-numeric: tabular-nums;
+}
+
+.loggedin-status-item__value--end::before {
+	content: none;
+}
+
+/* StatTiles: the label comes first in the markup (dt, dd), the value shows first. */
+.loggedin-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+	width: 100%;
+	margin: 0;
+}
+
+.loggedin-stat {
+	display: flex;
+	flex-direction: column-reverse;
+	justify-content: flex-end;
+	padding: 16px;
+	border: 1px solid var(--loggedin-stroke-card);
+	border-radius: var(--loggedin-radius-surface);
+}
+
+.loggedin-stat__value {
+	margin: 0;
+	font-size: 24px;
+	font-weight: 600;
+	line-height: 32px;
+	font-variant-numeric: tabular-nums;
+}
+
+.loggedin-stat__label {
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-fg-muted);
+}
+
+/* Versions on the Help page */
+.loggedin-versions {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+	width: 100%;
+	margin: 0;
+}
+
+.loggedin-versions > div {
+	display: flex;
+	flex-direction: column;
+	padding: 12px 16px;
+	border: 1px solid var(--loggedin-stroke-card);
+	border-radius: var(--loggedin-radius-surface);
+}
+
+.loggedin-versions dt {
+	font-size: 12px;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-versions dd {
+	margin: 2px 0 0;
+	font-size: 15px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+/* AddonHint: one help line under the setting an add-on extends. */
+.loggedin-admin .loggedin-hint {
+	margin: 0;
+}
+
+.loggedin-admin .loggedin-hint a {
+	text-decoration: underline;
+}
+
+/* Add-ons page: the caption row, then the AddonCard grid. */
+.loggedin-section-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 32px;
+}
+
+.loggedin-admin .loggedin-section-head h2 {
+	margin: 0;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 16px;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-addons {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--loggedin-space-4);
+}
+
+.loggedin-addon {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: var(--loggedin-space-5);
+	border: 1px solid var(--loggedin-stroke-card);
+	border-radius: var(--loggedin-radius-surface);
+	background: var(--loggedin-surface);
+}
+
+.loggedin-addon__head {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.loggedin-addon__icon {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	overflow: hidden;
+	border-radius: var(--loggedin-radius-surface);
+	background: var(--loggedin-surface-weak);
+	color: var(--loggedin-fg);
+}
+
+.loggedin-addon__icon img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.loggedin-admin .loggedin-addon__title {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 20px;
+	color: var(--loggedin-fg);
+}
+
+.loggedin-admin .loggedin-addon__title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.loggedin-admin .loggedin-addon__title a:hover {
+	color: var(--loggedin-theme);
+	text-decoration: underline;
+}
+
+.loggedin-admin .loggedin-addon__desc {
+	flex-grow: 1;
+	margin: 0;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-addon__footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-height: 45px;
+	padding-top: 12px;
+	border-top: 1px solid var(--loggedin-stroke-weak);
+}
+
+.loggedin-addon__status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--loggedin-fg-muted);
+}
+
+.loggedin-loading {
+	display: flex;
+	justify-content: center;
+	padding: var(--loggedin-space-8) 0;
+}
+
+/* Modals: the license key and confirm steps. */
+.loggedin-modal .loggedin-modal__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--loggedin-space-5);
+}
+
+.loggedin-modal p {
+	margin: 0;
+}
+
+.loggedin-modal__actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/*
+ * Settings panels from add-ons built before the kit (`loggedin.settings.panels`)
+ * are WordPress PanelBody blocks. Draw them as Cards, so an add-on that hasn't
+ * been updated still fits. Only the panel's own chrome is restyled; its
+ * controls stay as the add-on drew them.
+ */
+.loggedin-admin .loggedin-legacy-panel .components-panel__body {
+	margin: 0;
+	padding: 0 var(--loggedin-space-6);
+	border: 1px solid var(--loggedin-stroke-card);
+	border-radius: var(--loggedin-radius-surface);
+	background: var(--loggedin-surface);
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__body.is-opened {
+	padding-bottom: var(--loggedin-space-6);
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__body-title {
+	margin: 0 calc(-1 * var(--loggedin-space-6));
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__body-title:hover {
+	background: none;
+}
+
+/* A card can't be collapsed: the title is a heading, not a toggle. */
+.loggedin-admin .loggedin-legacy-panel .components-panel__body-toggle {
+	pointer-events: none;
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__arrow {
+	display: none;
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__body-toggle.components-button {
+	height: auto;
+	padding: var(--loggedin-space-6);
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 20px;
+	color: var(--loggedin-fg);
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__row {
+	display: block;
+	min-height: 0;
+	margin: 0 0 var(--loggedin-space-5);
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__row:last-child {
+	margin-bottom: 0;
+}
+
+.loggedin-admin .loggedin-legacy-panel .components-panel__row .components-base-control {
+	width: 100%;
+}
+
+/* Role rows: a role, its value and Remove, one row per role (Auto logout). */
+.loggedin-role-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.loggedin-admin .loggedin-role-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) var(--loggedin-number-width) auto;
+	align-items: start;
+	gap: 12px;
+	margin: 0;
+}
+
+/* Only the first row shows the column labels; screen readers still hear every one. */
+.loggedin-admin .loggedin-role-row:not(:first-child) :is(.components-base-control__label, .components-input-control__label) {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* Lines Remove up with the field, under the first row's labels. */
+.loggedin-admin .loggedin-role-row__remove {
+	margin-top: 4px;
+}
+
+.loggedin-admin .loggedin-role-row:first-child .loggedin-role-row__remove {
+	margin-top: 28px;
+}
+
+/* Snackbar */
+.loggedin-snackbars {
+	position: fixed;
+	bottom: var(--loggedin-space-7);
+	left: calc(160px + var(--loggedin-sidebar-width) + var(--loggedin-space-7));
+	z-index: 100;
+}
+
+.loggedin-admin .components-snackbar {
+	border-radius: 4px;
+}
+
+/* WordPress admin menu folded */
+.folded .loggedin-snackbars {
+	left: calc(36px + var(--loggedin-sidebar-width) + var(--loggedin-space-7));
+}
+
+@media (max-width: 960px) {
+
+	.loggedin-snackbars {
+		left: calc(36px + var(--loggedin-sidebar-width) + var(--loggedin-space-7));
+	}
+}
+
+/* Narrow screens: brand row, then a sticky header with the section dropdown and Save. */
+@media (max-width: 782px) {
+
+	.loggedin-admin {
+		--loggedin-control-height: 44px;
+
+		display: block;
+		min-height: 0;
+		margin-inline-start: -10px;
+	}
+
+	.loggedin-sidebar {
+		position: static;
+		height: auto;
+		padding: 12px 16px;
+		border-inline-end: 0;
+	}
+
+	.loggedin-brand {
+		padding: 0;
+	}
+
+	.loggedin-nav {
+		display: none;
+	}
+
+	.loggedin-header {
+		padding: 0 16px;
+		border-top: 1px solid var(--loggedin-stroke-weak);
+		box-shadow: var(--loggedin-shadow-sticky);
+	}
+
+	.loggedin-header__row {
+		min-height: 0;
+	}
+
+	.loggedin-admin .loggedin-header__title {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.loggedin-section-select {
+		position: relative;
+		display: block;
+		flex: 1 1 0;
+		min-width: 0;
+	}
+
+	.loggedin-admin .loggedin-section-select select {
+		width: 100%;
+		max-width: none;
+		height: var(--loggedin-control-height);
+		padding-inline-end: 36px;
+		font-size: 16px;
+		font-weight: 600;
+		appearance: none;
+		background-image: none;
+	}
+
+	.loggedin-section-select .loggedin-icon {
+		position: absolute;
+		top: calc(50% - 9px);
+		right: 10px;
+		pointer-events: none;
+	}
+
+	.loggedin-header__status {
+		order: 3;
+		flex-basis: 100%;
+	}
+
+	/* The empty live region keeps its place in the page but takes no row. */
+	.loggedin-header__status:empty {
+		margin-top: -8px;
+	}
+
+	html {
+		scroll-padding-top: calc(var(--wp-admin--admin-bar--height, 46px) + 110px);
+	}
+
+	.loggedin-tiles,
+	.loggedin-tiles--pairs,
+	.loggedin-addons {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.loggedin-content {
+		gap: 12px;
+		padding: 16px 16px 32px;
+	}
+
+	.loggedin-card {
+		padding: 16px;
+	}
+
+	.loggedin-affix {
+		width: 100%;
+	}
+
+	.loggedin-admin .loggedin-role-row {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.loggedin-admin .loggedin-role-row .loggedin-field--number {
+		grid-row: 2;
+	}
+
+	.loggedin-footer {
+		padding-inline: 16px;
+	}
+
+	.loggedin-snackbars {
+		left: 50%;
+		transform: translateX(-50%);
+	}
+}
+
+/* Below 600px WordPress's admin bar scrolls away with the page, so the header sticks to the very top. */
+@media (max-width: 600px) {
+
+	.loggedin-admin {
+		--loggedin-admin-bar: 0px;
+	}
+
+	html {
+		scroll-padding-top: 110px;
+	}
+}
+
+/*
+ * Windows high contrast mode drops background colours. Keep the marks that
+ * carry meaning (status dots, the checked radio) and outline the
+ * active page, whose tint would otherwise vanish.
+ */
+@media (forced-colors: active) {
+
+	.loggedin-dot {
+		forced-color-adjust: none;
+	}
+
+	.loggedin-admin .loggedin-tile input[type="radio"] {
+		appearance: auto;
+	}
+
+	.loggedin-admin .loggedin-nav-item[aria-current="page"] {
+		outline: 2px solid CanvasText;
+		outline-offset: -2px;
+	}
+
+	.loggedin-tile--on {
+		outline: 2px solid Highlight;
+	}
+}

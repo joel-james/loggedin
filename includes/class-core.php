@@ -33,13 +33,21 @@ namespace FoxeLabs\Loggedin;
 use FoxeLabs\Loggedin\Addons\Addons;
 use FoxeLabs\Loggedin\Admin\Admin;
 use FoxeLabs\Loggedin\Admin\Assets;
+use FoxeLabs\Loggedin\Admin\Users_List;
 use FoxeLabs\Loggedin\Api\Addons as Addons_Api;
 use FoxeLabs\Loggedin\Api\Sessions as Sessions_Api;
 use FoxeLabs\Loggedin\Api\Settings as Settings_Api;
+use FoxeLabs\Loggedin\Auto_Logout\Idle_Guard;
+use FoxeLabs\Loggedin\Auto_Logout\Lifetime;
+use FoxeLabs\Loggedin\Auto_Logout\Retired_Addon;
+use FoxeLabs\Loggedin\Auto_Logout\Settings as Auto_Logout_Settings;
 use FoxeLabs\Loggedin\Cli\Commands;
 use FoxeLabs\Loggedin\Contracts\Singleton;
+use FoxeLabs\Loggedin\Front\Last_Login;
 use FoxeLabs\Loggedin\Front\Logout_Epoch;
+use FoxeLabs\Loggedin\Front\Password_Signout;
 use FoxeLabs\Loggedin\Front\Session_Guard;
+use FoxeLabs\Loggedin\Front\Unlock;
 use FoxeLabs\Loggedin\Setup\Settings;
 use FoxeLabs\Loggedin\Setup\Upgrader;
 
@@ -96,6 +104,15 @@ final class Core {
 		Upgrader::instance();
 		Session_Guard::instance();
 		Logout_Epoch::instance();
+		Unlock::instance();
+		Password_Signout::instance();
+		Last_Login::instance();
+
+		// Auto logout: idle timeout and session length.
+		Retired_Addon::instance();
+		Auto_Logout_Settings::instance();
+		Idle_Guard::instance();
+		Lifetime::instance();
 	}
 
 	/**
@@ -106,6 +123,7 @@ final class Core {
 		if ( is_admin() ) {
 			Admin::instance();
 			Assets::instance();
+			Users_List::instance();
 		}
 	}
 

@@ -24,7 +24,7 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 	public function set_up(): void {
 		parent::set_up();
 
-		$this->user_id = self::factory()->user->create();
+		$this->user_id = self::factory()->user->create( array( 'user_pass' => 'correct-horse' ) );
 
 		// Seed two session tokens so any limit <= 2 trips the check.
 		$manager = WP_Session_Tokens::get_instance( $this->user_id );
@@ -35,6 +35,7 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 	public function tear_down(): void {
 		delete_option( Plugin::OPTION_KEY );
 		remove_all_filters( 'loggedin_bypass' );
+		remove_all_actions( 'loggedin_login_blocked' );
 
 		parent::tear_down();
 	}
@@ -51,17 +52,77 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 	public function test_block_mode_returns_wp_error_at_limit(): void {
 		$this->set_settings( 1, 'block' );
 
-		$result = Session_Guard::instance()->validate_block_logic( get_user_by( 'id', $this->user_id ) );
+		$result = Session_Guard::instance()->validate_block_logic( get_user_by( 'id', $this->user_id ), 'correct-horse' );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'login_limit_reached', $result->get_error_code() );
+	}
+
+	public function test_block_mode_leaves_a_wrong_password_to_wordpress(): void {
+		$this->set_settings( 1, 'block' );
+
+		$blocked = 0;
+		add_action(
+			'loggedin_login_blocked',
+			static function () use ( &$blocked ) {
+				++$blocked;
+			}
+		);
+
+		$user   = get_user_by( 'id', $this->user_id );
+		$result = Session_Guard::instance()->validate_block_logic( $user, 'wrong' );
+
+		// WordPress then reports the wrong password itself; the limit stays secret.
+		$this->assertSame( $user, $result );
+		$this->assertSame( 0, $blocked );
+	}
+
+	public function test_block_error_offers_the_unlock_link_when_on(): void {
+		$this->set_settings( 1, 'block' );
+
+		$result = Session_Guard::instance()->validate_block_logic( get_user_by( 'id', $this->user_id ), 'correct-horse' );
+
+		$this->assertStringContainsString( 'action=loggedin_unlock_request', $result->get_error_message() );
+	}
+
+	public function test_block_error_has_no_link_when_unlock_is_off(): void {
+		Settings::instance()->update(
+			array(
+				'maximum' => 1,
+				'logic'   => 'block',
+				'unlock'  => false,
+			)
+		);
+
+		$result = Session_Guard::instance()->validate_block_logic( get_user_by( 'id', $this->user_id ), 'correct-horse' );
+
+		$this->assertStringNotContainsString( 'loggedin_unlock', $result->get_error_message() );
+	}
+
+	public function test_administrators_are_exempt_while_the_setting_is_on(): void {
+		$this->set_settings( 1, 'block' );
+
+		$user = get_user_by( 'id', $this->user_id );
+		$user->set_role( 'administrator' );
+
+		$this->assertSame( $user, Session_Guard::instance()->validate_block_logic( $user, 'correct-horse' ) );
+
+		Settings::instance()->update(
+			array(
+				'maximum'       => 1,
+				'logic'         => 'block',
+				'exempt_admins' => false,
+			)
+		);
+
+		$this->assertWPError( Session_Guard::instance()->validate_block_logic( $user, 'correct-horse' ) );
 	}
 
 	public function test_block_mode_passes_when_below_limit(): void {
 		$this->set_settings( 5, 'block' );
 
 		$user   = get_user_by( 'id', $this->user_id );
-		$result = Session_Guard::instance()->validate_block_logic( $user );
+		$result = Session_Guard::instance()->validate_block_logic( $user, 'correct-horse' );
 
 		$this->assertSame( $user, $result );
 	}
@@ -94,7 +155,7 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 		add_filter( 'loggedin_bypass', '__return_true' );
 
 		$user   = get_user_by( 'id', $this->user_id );
-		$result = Session_Guard::instance()->validate_block_logic( $user );
+		$result = Session_Guard::instance()->validate_block_logic( $user, 'correct-horse' );
 
 		$this->assertSame( $user, $result );
 	}

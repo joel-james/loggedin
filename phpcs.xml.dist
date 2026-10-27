@@ -51,5 +51,5 @@
 	<config name="testVersion" value="7.4-"/>
 	<rule ref="PHPCompatibilityWP"/>
 
-	<config name="minimum_wp_version" value="5.0"/>
+	<config name="minimum_wp_version" value="6.5"/>
 </ruleset>

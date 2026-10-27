@@ -68,6 +68,11 @@ final class Upgrader {
 			return;
 		}
 
+		// Read before any migration writes the option below.
+		$is_upgrade = '' !== $stored
+			|| false !== get_option( Plugin::OPTION_KEY, false )
+			|| null !== get_option( 'loggedin_maximum', null );
+
 		// On a *first* upgrade to the unified-settings schema, pull
 		// the legacy single-key values into the new option.
 		$this->migrate_legacy_options();
@@ -79,6 +84,10 @@ final class Upgrader {
 		// Move license activations onto the key the rebranded
 		// `foxelabs/wp-freemius-client` reads.
 		$this->migrate_freemius_activation_data();
+
+		if ( $is_upgrade && ( '' === $stored || version_compare( $stored, '3.4.0', '<' ) ) ) {
+			$this->keep_pre_340_behaviour();
+		}
 
 		update_option( Plugin::VERSION_KEY, Plugin::VERSION );
 	}
@@ -248,6 +257,35 @@ final class Upgrader {
 		) {
 			$settings['logic'] = (string) $legacy_logic;
 		}
+
+		update_option( Plugin::OPTION_KEY, $settings );
+	}
+
+	/**
+	 * Keep a site upgrading from before 3.4.0 working as it did.
+	 *
+	 * 3.4.0 turns on self-unlock by email and exempts administrators
+	 * from the limit. New installs get both; an upgraded site gets
+	 * neither until an admin turns them on, so nobody finds their
+	 * limits behaving differently after an update. A value already
+	 * stored (set on an earlier pass, or by hand) is left alone.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	protected function keep_pre_340_behaviour(): void {
+		$stored = get_option( Plugin::OPTION_KEY, array() );
+		$stored = is_array( $stored ) ? $stored : array();
+
+		$settings = array_merge(
+			Settings::instance()->defaults(),
+			array(
+				'unlock'        => false,
+				'exempt_admins' => false,
+			),
+			$stored
+		);
 
 		update_option( Plugin::OPTION_KEY, $settings );
 	}

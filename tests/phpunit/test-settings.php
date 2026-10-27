@@ -9,6 +9,7 @@ declare( strict_types = 1 );
 
 use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Loggedin\Setup\Settings;
+use FoxeLabs\Loggedin\Setup\Upgrader;
 
 /**
  * @group settings
@@ -106,5 +107,70 @@ class Loggedin_Settings_Test extends WP_UnitTestCase {
 		// Deleting falls back to defaults rather than the last value.
 		delete_option( Plugin::OPTION_KEY );
 		$this->assertSame( 1, $settings->get( 'maximum' ) );
+	}
+
+	public function test_new_switches_default_to_on(): void {
+		$defaults = Settings::instance()->defaults();
+
+		$this->assertTrue( $defaults['unlock'] );
+		$this->assertTrue( $defaults['exempt_admins'] );
+		$this->assertTrue( $defaults['password_signout'] );
+	}
+
+	public function test_sanitize_casts_switches_to_booleans(): void {
+		$result = Settings::instance()->sanitize(
+			array(
+				'unlock'        => 0,
+				'exempt_admins' => '1',
+			)
+		);
+
+		$this->assertFalse( $result['unlock'] );
+		$this->assertTrue( $result['exempt_admins'] );
+		$this->assertTrue( $result['password_signout'] );
+	}
+
+	/**
+	 * Store the option the way a version before 3.4.0 left it.
+	 *
+	 * Without the sanitizer, which would fill in the 3.4.0 keys.
+	 *
+	 * @param array $value Option value.
+	 */
+	private function store_old_option( array $value ): void {
+		remove_all_filters( 'sanitize_option_' . Plugin::OPTION_KEY );
+		update_option( Plugin::OPTION_KEY, $value );
+	}
+
+	public function test_an_upgrade_from_before_340_keeps_the_old_behaviour(): void {
+		update_option( Plugin::VERSION_KEY, '3.2.0' );
+		$this->store_old_option( array( 'maximum' => 2 ) );
+
+		Upgrader::instance()->maybe_upgrade();
+
+		$stored = get_option( Plugin::OPTION_KEY );
+		$this->assertFalse( $stored['unlock'] );
+		$this->assertFalse( $stored['exempt_admins'] );
+		$this->assertTrue( $stored['password_signout'] );
+		$this->assertSame( 2, $stored['maximum'] );
+	}
+
+	public function test_an_upgrade_keeps_a_value_already_chosen(): void {
+		update_option( Plugin::VERSION_KEY, '3.2.0' );
+		$this->store_old_option( array( 'unlock' => true ) );
+
+		Upgrader::instance()->maybe_upgrade();
+
+		$this->assertTrue( get_option( Plugin::OPTION_KEY )['unlock'] );
+	}
+
+	public function test_a_new_install_gets_the_new_defaults(): void {
+		delete_option( Plugin::VERSION_KEY );
+		delete_option( Plugin::OPTION_KEY );
+
+		Upgrader::instance()->maybe_upgrade();
+
+		$this->assertTrue( Settings::instance()->get( 'unlock' ) );
+		$this->assertTrue( Settings::instance()->get( 'exempt_admins' ) );
 	}
 }

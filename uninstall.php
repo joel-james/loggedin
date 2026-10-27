@@ -42,6 +42,10 @@ delete_option( 'loggedin_rating_notice' );
 // plugin enforcing the logout is being removed anyway.
 delete_option( 'loggedin_logout_all_before' );
 
+// Auto logout settings (the names the Auto Logout add-on used too).
+delete_option( 'loggedin_auto_logout_settings' );
+delete_option( 'loggedin_auto_logout_role_timeouts' );
+
 global $wpdb;
 
 /*
@@ -58,3 +62,22 @@ $wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		'meta_key' => 'loggedin_rating_notice_dismissed', // phpcs:ignore WordPress.DB.SlowDBQuery
 	)
 );
+
+// Per-user rows: auto logout's activity stamps, the last login time and
+// the self-unlock keys and send times.
+$loggedin_user_meta = array(
+	'loggedin_auto_logout_activity',
+	'loggedin_last_login',
+	'loggedin_unlock_request',
+	'loggedin_unlock',
+	'loggedin_unlock_sent',
+);
+
+foreach ( $loggedin_user_meta as $loggedin_meta_key ) {
+	$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->usermeta,
+		array(
+			'meta_key' => $loggedin_meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery
+		)
+	);
+}
