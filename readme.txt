@@ -245,8 +245,14 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * New: "Your sessions" on the profile screen.
 * New: Logout Oldest and Logout All now also apply to logins that skip the login form (social login, magic links, popup logins).
 * New: Add-ons can add pages, cards and fields from PHP with the `loggedin_settings_schema` filter.
+* New: A notice lists add-ons that need an update for the new settings screen.
+* Improve: Block New checks the password first. A wrong password gets WordPress's usual error, not the limit message.
+* Improve: Add-ons built for the old screen keep working, and links from before 3.4.0 still open the right page.
+* Improve: `wp loggedin settings set` accepts true/false, yes/no, on/off or 1/0 for on/off settings.
+* Improve: Keyboard and screen reader fixes on the settings screen and the profile's sign-out buttons.
 * Fix: Logout Oldest skips sessions that already expired, and ends as many as needed when the limit was lowered.
 * Changed: Requires WordPress 6.5.
+* Changed: Force Logout moved to Manage › Sessions, and Support is now Help.
 * Changed: Sites updating from an earlier version keep self-unlock and the administrator exemption off until turned on.
 
 = 3.3.1 =
@@ -303,6 +309,9 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 For the full release history, see the [changelog](https://docs.foxelabs.com/software/loggedin/changelog).
 
 == Upgrade Notice ==
+
+= 3.4.0 =
+New settings screen, free built-in auto logout, self-unlock by email and sessions on the Users screen. Requires WordPress 6.5. Update your Loggedin add-ons too. Remove the Auto Logout add-on; its settings carry over.
 
 = 3.3.1 =
 Fixes some valid add-on license keys being rejected as invalid. Update, then activate your add-on license again if it failed before.

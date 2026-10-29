@@ -2,7 +2,7 @@
 /**
  * `wp loggedin sessions` commands.
  *
- * The CLI counterpart to the "Force Logout" panel in wp-admin, plus a
+ * The CLI counterpart to the Sessions page in wp-admin, plus a
  * read-only view of a single user's active sessions.
  *
  * Deliberately scoped to *one user at a time* — every subcommand takes
@@ -168,7 +168,7 @@ final class Sessions_Command {
 	 * Destroy the sessions of a user, logging them out.
 	 *
 	 * Without `--token`, every session for the user is destroyed — the
-	 * same operation as the Force Logout panel in wp-admin, and it fires
+	 * same operation as the Sign out a user card in wp-admin, and it fires
 	 * the same `loggedin_destroy_all_sessions` action so add-ons see
 	 * both paths.
 	 *
@@ -188,7 +188,7 @@ final class Sessions_Command {
 	 *
 	 *     # Log a user out everywhere.
 	 *     $ wp loggedin sessions destroy editor@example.com --yes
-	 *     Success: Destroyed 3 sessions for editor.
+	 *     Success: Destroyed 3 session(s) for editor.
 	 *
 	 *     # Log a user out of one device only.
 	 *     $ wp loggedin sessions destroy 42 --token=e3b0c442... --yes
@@ -439,7 +439,7 @@ final class Sessions_Command {
 	 * Resolve a user identifier, halting the command when it misses.
 	 *
 	 * Uses WP-CLI's own fetcher so `<user>` accepts an id, a login, or
-	 * an email address — the same three shapes the Force Logout panel
+	 * an email address — the same three shapes the Sessions page
 	 * takes — and produces the standard "Could not find the user"
 	 * error message users already know from `wp user`.
 	 *
