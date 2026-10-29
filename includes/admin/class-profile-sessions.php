@@ -100,11 +100,12 @@ final class Profile_Sessions {
 		echo '</tr></thead><tbody>';
 
 		foreach ( $sessions as $verifier => $session ) {
-			$login = (int) ( $session['login'] ?? 0 );
-			$ip    = (string) ( $session['ip'] ?? '' );
+			$login  = (int) ( $session['login'] ?? 0 );
+			$ip     = (string) ( $session['ip'] ?? '' );
+			$device = $store->device( (string) ( $session['ua'] ?? '' ) );
 
 			echo '<tr>';
-			echo '<td>' . esc_html( $store->device( (string) ( $session['ua'] ?? '' ) ) ) . '</td>';
+			echo '<td>' . esc_html( $device ) . '</td>';
 			echo '<td>' . esc_html( '' !== $ip ? (string) wp_privacy_anonymize_ip( $ip ) : '—' ) . '</td>';
 			echo '<td>' . ( $login ? '<time datetime="' . esc_attr( gmdate( 'c', $login ) ) . '" title="' . esc_attr( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $login ) ) . '">' . esc_html( $this->ago( $login ) ) . '</time>' : '—' ) . '</td>';
 			echo '<td style="text-align:end">';
@@ -112,9 +113,12 @@ final class Profile_Sessions {
 			if ( $verifier === $current ) {
 				echo '<strong>' . esc_html__( 'This device', 'loggedin' ) . '</strong>';
 			} else {
+				// Every row's button says "Sign out"; the label names the device for screen readers.
 				printf(
-					'<a class="button button-small" href="%1$s">%2$s</a>',
+					'<a class="button button-small" href="%1$s" aria-label="%2$s">%3$s</a>',
 					esc_url( $this->end_url( (string) $verifier ) ),
+					/* translators: 1: Device, such as "Chrome on macOS". 2: How long ago it signed in. */
+					esc_attr( sprintf( __( 'Sign out %1$s, signed in %2$s', 'loggedin' ), $device, $login ? $this->ago( $login ) : '—' ) ),
 					esc_html__( 'Sign out', 'loggedin' )
 				);
 			}

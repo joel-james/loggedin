@@ -1199,6 +1199,16 @@ html {
 	padding-inline-end: var(--loggedin-space-6);
 }
 
+/*
+ * DataViews gives every cell 15ch at least, which pushes a table of six
+ * or seven columns past a 1280px screen. Let columns size to what they
+ * hold; the wrapper still scrolls when that doesn't fit.
+ */
+.loggedin-admin .loggedin-table-card .dataviews-view-table__cell-content-wrapper,
+.loggedin-admin .loggedin-table-card .dataviews-view-table__primary-column-content {
+	min-width: 0;
+}
+
 .loggedin-admin .loggedin-table-card .dataviews-view-table tbody tr:hover {
 	background: var(--loggedin-surface-sunken);
 }
@@ -1400,6 +1410,12 @@ html {
 
 	.loggedin-admin .loggedin-role-row .loggedin-field--number {
 		grid-row: 2;
+	}
+
+	/* Stacked, one row's fields would run into the next row's. */
+	.loggedin-admin .loggedin-role-row + .loggedin-role-row {
+		padding-top: 12px;
+		border-top: 1px solid var(--loggedin-stroke-weak);
 	}
 
 	.loggedin-footer {

@@ -6,6 +6,7 @@
 /**
  * WordPress dependencies
  */
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -51,7 +52,17 @@ export function RoleTable( {
 	removeLabel = __( 'Remove the setting for %s', 'loggedin' ),
 	onChange,
 } ) {
+	const addRef = useRef();
+	const [ removed, setRemoved ] = useState( false );
 	const rows = Object.entries( value );
+
+	// The Remove button that had focus is gone; keep keyboard users in the table.
+	useEffect( () => {
+		if ( removed ) {
+			addRef.current?.focus();
+			setRemoved( false );
+		}
+	}, [ removed ] );
 	const unused = Object.keys( roles ).filter(
 		( slug ) => undefined === value[ slug ]
 	);
@@ -73,10 +84,12 @@ export function RoleTable( {
 			)
 		);
 
-	const remove = ( role ) =>
+	const remove = ( role ) => {
 		onChange(
 			Object.fromEntries( rows.filter( ( [ slug ] ) => slug !== role ) )
 		);
+		setRemoved( true );
+	};
 
 	return (
 		<>
@@ -128,6 +141,7 @@ export function RoleTable( {
 			{ unused.length > 0 && (
 				<div>
 					<Button
+						ref={ addRef }
 						variant="secondary"
 						size="compact"
 						onClick={ () =>

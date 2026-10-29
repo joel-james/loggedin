@@ -245,9 +245,9 @@ export function TextareaField( {
 
 	return (
 		<div className={ fieldClass( 'text', error ) }>
+			{ /* TextareaControl labels its own id, so ours would leave the label unlinked. */ }
 			<TextareaControl
 				__nextHasNoMarginBottom
-				id={ id }
 				label={ label }
 				value={ value }
 				placeholder={ placeholder }
