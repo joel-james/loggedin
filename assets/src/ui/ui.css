@@ -916,6 +916,11 @@ html {
 	margin: 0;
 }
 
+/* Two hints in a row read as one note, not two card sections. */
+.loggedin-admin .loggedin-hint + .loggedin-hint {
+	margin-top: calc(4px - var(--loggedin-space-5));
+}
+
 .loggedin-admin .loggedin-hint a {
 	text-decoration: underline;
 }

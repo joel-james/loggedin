@@ -79,6 +79,18 @@ export function LoginLimitsPage( { boot, errors, navigate, hrefFor } ) {
 						) }
 					</AddonHint>
 				) }
+				{ ! boot.activeAddons.includes( 'loggedin-limit-per-user' ) && (
+					<AddonHint
+						href={ hrefFor( 'addons' ) }
+						linkText={ __( 'Limit Per User', 'loggedin' ) }
+						onOpen={ () => navigate( 'addons' ) }
+					>
+						{ __(
+							'Need a different limit for one account?',
+							'loggedin'
+						) }
+					</AddonHint>
+				) }
 			</Card>
 			<Card
 				title={ __( 'When the limit is reached', 'loggedin' ) }

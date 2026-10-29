@@ -404,9 +404,13 @@ Settled 2026-09-26 unless dated otherwise.
 - [x] A1 kit components and tokens, ported from Convocept — branch
       `feature/admin-kit`, 2026-10-26. 2026-10-29: TextareaField and
       TableCard added; the kit is exposed to add-on scripts as
-      `window.loggedin.ui`
+      `window.loggedin.ui`. Not ported: Badge (no screen uses it yet) and
+      BundleCard (waits for the bundle plan in Phase D)
 - [x] A2 screen: sidebar, Login limits, Lockout & recovery, Auto logout,
-      Sessions, Add-ons, Help (BundleCard waits for the bundle plan in Phase D)
+      Sessions, Add-ons, Help (BundleCard waits for the bundle plan in Phase D).
+      Pages are addressed with `&tab=`; old `#hash` links still work.
+      2026-10-29: AddonHint for Limit Per User beside the Limit Per Role one;
+      placeholder cards while the Add-ons list loads
 - [x] A3 `loggedin_settings_schema` (pages, cards, fields) and legacy
       panel/tab compatibility, checked with Limit Per Role and Real-time Logout.
       2026-10-29: `role-table` fields, fields without a `key` (whole option),
@@ -424,13 +428,26 @@ Settled 2026-09-26 unless dated otherwise.
 - [ ] A5 QA. Done: PHPUnit on WordPress 7.1 and 6.5.14, JS lint, phpcs.
       Found and fixed: the bundles need `react-jsx-runtime`, which WordPress
       only registers from 6.6, so 6.5 showed a blank screen; core now
-      registers a shim on its screen. Left: browser pass at 1280/782/390px,
-      keyboard only, RTL, two colour schemes, contrast, Windows high
-      contrast, old/new core and add-on combinations
+      registers a shim on its screen.
+      Browser pass, 2026-10-29, WordPress 7.1 with all add-ons on their
+      `feature/admin-kit` branches: every page at 1280px and 375px (no
+      sideways scroll), RTL, saving, validation, Discard, notices, the Users
+      list and profile screens, and the retired Auto Logout add-on active.
+      Found and fixed: role rows misaligned (the select's label had an extra
+      8px gap), Active Sessions table wider than its card at 1280px, focus
+      lost after removing a role row, the Message textarea's label not
+      linked, profile Sign out buttons without a device name for screen
+      readers, stacked role rows running together on phones.
+      Left: 782px, two admin colour schemes and the accent, contrast, Windows
+      high contrast, keyboard-only pass of every page, older core with new
+      add-ons and the reverse, and the login flows end to end (Block New
+      message, self-unlock email, displaced notice and redirect, idle
+      warning)
 - [x] B8 auto logout in core, add-on takeover, REST idle-logout error —
       `feature/admin-kit`, 2026-10-26. Docs moved to a core page with a
-      redirect, 2026-10-29 (docs repo branch `loggedin-3.4.0`). Left:
-      Freemius licence check, stop selling, archive the add-on repo
+      redirect, 2026-10-29 (docs repo branch `loggedin-3.4.0`). The add-on
+      never sold, so it is simply removed from Freemius (2026-10-29); no
+      licence check or migration is needed
 - [x] B1 self-unlock and "Don't limit administrators", B3 Users list, B5
       password-change sign-out — `feature/admin-kit`, 2026-10-26. One-time
       "exempt administrators" notice (decision 6), 2026-10-29
@@ -438,11 +455,15 @@ Settled 2026-09-26 unless dated otherwise.
       The notice matches the exact session Loggedin ended (its verifier),
       not a time window, so other sign-outs never show it
 - [x] B4 "Your sessions" on the profile; a count on other users' profiles —
-      2026-10-29. WordPress's own "Log Out Everywhere Else" stays the way to
-      end the rest. Single-session writes go through `Session_Store`
+      2026-10-29. WordPress's own "Log Out Everywhere Else" (and "Log Out
+      Everywhere" on another user's profile) stays the way to end the rest,
+      instead of a second button of ours. Single-session writes go through `Session_Store`
       (also used by Logout Oldest and WP-CLI)
 - [x] B6 Logout Oldest and Logout All enforced as a session is created —
-      2026-10-29. Not yet tested against the named plugins; the docs say so
-- [x] B7 readme, FAQ and docs pages — 2026-10-29
+      2026-10-29. Not yet tested against Nextend Social Login, a magic-link
+      plugin, WooCommerce My Account, Ultimate Member or MemberPress; the
+      compatibility page says so
+- [x] B7 readme, FAQ and docs pages — 2026-10-29. Store pages beyond the
+      WordPress.org readme are not updated yet
 - [ ] Phase C — Login History, Membership Limits, Login Alerts, Active Sessions upgrade
 - [ ] Phase D — bundle plan, discovery
