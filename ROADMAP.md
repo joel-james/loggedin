@@ -279,16 +279,13 @@ a port, not a rebuild.
 - Keep the activity stamp in its own user meta row, never in
   `session_tokens` (constraint 2). Port
   `test_stamping_never_writes_the_session_tokens_blob` with it.
-- **The add-on still active:** core stops the add-on from booting (it
-  unhooks the add-on's `loggedin_init` callback) and runs auto logout itself
-  from the same settings, so nothing is enforced twice and the add-on's panel
-  never loads. A Notice on Plugins and on Loggedin's screen says the add-on
-  can be deactivated.
+- **No takeover of the add-on:** it never sold, so no site runs it. Core
+  doesn't detect it or stop it booting (decided 2026-10-30).
 - **Fix in the port:** an idle logout during a REST request returns a bare
   401 that neither admin React app handles. Return an error the apps
   recognise and send the user to the login screen.
-- **Retire the product:** check Freemius (id 38081) for any licence first,
-  then stop selling it and remove it from the Add-ons page and the bundle.
+- **Retire the product:** archive it in Freemius. The Add-ons page lists
+  only published add-ons from the API, so core needs no code to hide it.
   Move the docs from `software/loggedin/addons/auto-logout.md` to a core
   feature page, with a redirect from the old URL. Archive the
   `loggedin-auto-logout` repository after core ships.
@@ -432,7 +429,7 @@ Settled 2026-09-26 unless dated otherwise.
       Browser pass, 2026-10-29, WordPress 7.1 with all add-ons on their
       `feature/admin-kit` branches: every page at 1280px and 375px (no
       sideways scroll), RTL, saving, validation, Discard, notices, the Users
-      list and profile screens, and the retired Auto Logout add-on active.
+      list and profile screens.
       Found and fixed: role rows misaligned (the select's label had an extra
       8px gap), Active Sessions table wider than its card at 1280px, focus
       lost after removing a role row, the Message textarea's label not
@@ -443,11 +440,11 @@ Settled 2026-09-26 unless dated otherwise.
       add-ons and the reverse, and the login flows end to end (Block New
       message, self-unlock email, displaced notice and redirect, idle
       warning)
-- [x] B8 auto logout in core, add-on takeover, REST idle-logout error —
-      `feature/admin-kit`, 2026-10-26. Docs moved to a core page with a
-      redirect, 2026-10-29 (docs repo branch `loggedin-3.4.0`). The add-on
-      never sold, so it is simply removed from Freemius (2026-10-29); no
-      licence check or migration is needed
+- [x] B8 auto logout in core, REST idle-logout error — `feature/admin-kit`,
+      2026-10-26. Docs moved to a core page with a redirect, 2026-10-29
+      (docs repo branch `loggedin-3.4.0`). The add-on never sold and is
+      archived in Freemius, so the takeover code and the Add-ons page filter
+      were removed on 2026-10-30; no licence check or migration is needed
 - [x] B1 self-unlock and "Don't limit administrators", B3 Users list, B5
       password-change sign-out — `feature/admin-kit`, 2026-10-26. One-time
       "exempt administrators" notice (decision 6), 2026-10-29

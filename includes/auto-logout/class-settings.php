@@ -13,10 +13,6 @@
  *  - {@see self::ROLE_OPTION_KEY} — an open `{ role: minutes }` map,
  *    whose keys aren't knowable at schema-declaration time.
  *
- * The option, meta and hook names are the ones the Auto Logout add-on
- * 1.0 used, so a site that ran the add-on keeps its settings, and its
- * snippets keep working, with no migration.
- *
  * @package FoxeLabs\Loggedin\Auto_Logout
  */
 
@@ -207,7 +203,7 @@ final class Settings {
 		 * hook every "never log out my API robot / kiosk display"
 		 * request ends up needing.
 		 *
-		 * @since 3.4.0 In core; the Auto Logout add-on 1.0.0 added it.
+		 * @since 3.4.0
 		 *
 		 * @param int          $minutes Resolved timeout in minutes.
 		 * @param WP_User|null $user    User being resolved.

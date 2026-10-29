@@ -42,7 +42,7 @@ delete_option( 'loggedin_rating_notice' );
 // plugin enforcing the logout is being removed anyway.
 delete_option( 'loggedin_logout_all_before' );
 
-// Auto logout settings (the names the Auto Logout add-on used too).
+// Auto logout settings.
 delete_option( 'loggedin_auto_logout_settings' );
 delete_option( 'loggedin_auto_logout_role_timeouts' );
 delete_option( 'loggedin_suggest_exempt_admins' );

@@ -42,7 +42,6 @@ use FoxeLabs\Loggedin\Api\Sessions as Sessions_Api;
 use FoxeLabs\Loggedin\Api\Settings as Settings_Api;
 use FoxeLabs\Loggedin\Auto_Logout\Idle_Guard;
 use FoxeLabs\Loggedin\Auto_Logout\Lifetime;
-use FoxeLabs\Loggedin\Auto_Logout\Retired_Addon;
 use FoxeLabs\Loggedin\Auto_Logout\Settings as Auto_Logout_Settings;
 use FoxeLabs\Loggedin\Cli\Commands;
 use FoxeLabs\Loggedin\Contracts\Singleton;
@@ -114,7 +113,6 @@ final class Core {
 		Displaced::instance();
 
 		// Auto logout: idle timeout and session length.
-		Retired_Addon::instance();
 		Auto_Logout_Settings::instance();
 		Idle_Guard::instance();
 		Lifetime::instance();

@@ -19,7 +19,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Addons;
 
-use FoxeLabs\Loggedin\Auto_Logout\Retired_Addon;
 use FoxeLabs\Loggedin\Contracts\Singleton;
 
 defined( 'WPINC' ) || die;
@@ -73,11 +72,6 @@ final class Catalog {
 		foreach ( (array) $catalogue as $addon ) {
 			$id      = (int) ( $addon['id'] ?? 0 );
 			$license = $licenses[ $id ] ?? array();
-
-			// Auto Logout is part of core since 3.4.0.
-			if ( Retired_Addon::FREEMIUS_ID === $id ) {
-				continue;
-			}
 
 			$items[] = array(
 				'id'                => $id,

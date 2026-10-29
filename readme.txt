@@ -136,7 +136,7 @@ Yes, with the official [Limit Per User add-on](https://foxelabs.com/software/plu
 
 = Can I log users out automatically after they go idle? =
 
-Yes, for free since 3.4.0. Go to **Users → Loggedin → Auto logout**, turn on idle logout and set the timeout. A countdown warns first, roles can have their own timeouts, and the check runs on the server, so leaving a tab open doesn't keep a session alive. If you used the Auto Logout add-on, your settings carry over and you can delete the add-on.
+Yes, for free since 3.4.0. Go to **Users → Loggedin → Auto logout**, turn on idle logout and set the timeout. A countdown warns first, roles can have their own timeouts, and the check runs on the server, so leaving a tab open doesn't keep a session alive.
 
 = Why was I signed out with "your account signed in on another device"? =
 
@@ -239,7 +239,7 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * New: "Don't limit administrators" setting.
 * New: Set the blocked-login message on the Lockout & recovery page.
 * New: A device signed out by a newer login is told why on the login screen, or sent to a page you choose.
-* New: Auto logout is now free and built in — idle logout with a countdown, timeouts per role and session length. The Auto Logout add-on is retired; its settings carry over.
+* New: Auto logout is now free and built in — idle logout with a countdown, timeouts per role and session length.
 * New: A password change or reset signs the user out of their other devices.
 * New: Sessions and Last login columns, and a "Sign out everywhere" action, on the Users screen.
 * New: "Your sessions" on the profile screen.
@@ -314,7 +314,7 @@ For the full release history, see the [changelog](https://docs.foxelabs.com/soft
 == Upgrade Notice ==
 
 = 3.4.0 =
-New settings screen, free built-in auto logout, self-unlock by email and sessions on the Users screen. Requires WordPress 6.5. Update your Loggedin add-ons too. Remove the Auto Logout add-on; its settings carry over.
+New settings screen, free built-in auto logout, self-unlock by email and sessions on the Users screen. Requires WordPress 6.5. Update your Loggedin add-ons too.
 
 = 3.3.1 =
 Fixes some valid add-on license keys being rejected as invalid. Update, then activate your add-on license again if it failed before.

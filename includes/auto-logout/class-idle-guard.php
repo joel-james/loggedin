@@ -337,7 +337,7 @@ final class Idle_Guard {
 		/**
 		 * Fires just before an idle session is terminated.
 		 *
-		 * @since 3.4.0 In core; the Auto Logout add-on 1.0.0 added it.
+		 * @since 3.4.0
 		 *
 		 * @param int $user_id User whose session is ending.
 		 * @param int $timeout Resolved timeout in seconds.
