@@ -4,7 +4,7 @@
 
 	<file>./loggedin.php</file>
 	<file>./uninstall.php</file>
-	<file>./includes</file>
+	<file>./src</file>
 
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
@@ -20,14 +20,12 @@
 
 	<rule ref="WordPress">
 		<exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
-		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
 	</rule>
 	<rule ref="WordPress-Extra"/>
 
+	<!-- PSR-4 file names (src/Plugin.php) instead of class-plugin.php. -->
 	<rule ref="WordPress.Files.FileName">
-		<properties>
-			<property name="strict_class_file_names" value="false"/>
-		</properties>
+		<exclude-pattern>/src/*</exclude-pattern>
 	</rule>
 
 	<rule ref="WordPress.WP.I18n">

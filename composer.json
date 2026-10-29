@@ -17,9 +17,9 @@
     }
   },
   "autoload": {
-    "classmap": [
-      "includes/"
-    ]
+    "psr-4": {
+      "FoxeLabs\\Loggedin\\": "src/"
+    }
   },
   "require": {
     "php": ">=7.4",
@@ -39,5 +39,10 @@
     "test": "phpunit"
   },
   "minimum-stability": "stable",
-  "prefer-stable": true
+  "prefer-stable": true,
+  "autoload-dev": {
+    "psr-4": {
+      "FoxeLabs\\Loggedin\\Tests\\": "tests/php/"
+    }
+  }
 }

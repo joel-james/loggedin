@@ -1,0 +1,300 @@
+<?php
+/**
+ * Plugin upgrader.
+ *
+ * Runs once per version bump on the next request after an update,
+ * performing any data migrations needed to keep stored state in sync
+ * with the current schema. Today there's one migration — the move
+ * from the pre-3.0 single-key options to the unified
+ * `loggedin_settings` array — but new versions can append their own
+ * branches inside `maybe_upgrade()` without touching anything else.
+ *
+ * The version stamp lives in its own option (`loggedin_version`) so
+ * we don't have to dig through the main settings array to detect a
+ * version change.
+ *
+ * @package FoxeLabs\Loggedin\Settings
+ */
+
+declare( strict_types = 1 );
+
+namespace FoxeLabs\Loggedin\Settings;
+
+use FoxeLabs\Freemius\Storage\ActivationRepository;
+use FoxeLabs\Loggedin\Admin\ExemptAdminsNotice;
+use FoxeLabs\Loggedin\Contracts\Singleton;
+use FoxeLabs\Loggedin\Plugin;
+
+defined( 'WPINC' ) || die;
+
+/**
+ * Schema upgrader — migrates legacy options to the unified store.
+ *
+ * @since 3.0.0
+ */
+final class Upgrader {
+
+	use Singleton;
+
+	/**
+	 * Register hooks.
+	 *
+	 * Core boots us from inside its own `plugins_loaded` callback, so
+	 * any `add_action( 'plugins_loaded', ... )` here would register too
+	 * late to ever fire. Run the upgrade inline instead — Settings is
+	 * already constructed by the time Core reaches us, and downstream
+	 * modules instantiated after this line see the migrated schema.
+	 *
+	 * @since 3.0.0
+	 */
+	protected function init(): void {
+		$this->maybe_upgrade();
+	}
+
+	/**
+	 * Run any pending migrations and stamp the new version.
+	 *
+	 * Short-circuits when the stored version already matches the
+	 * running version, so steady-state requests pay nothing beyond a
+	 * single `get_option()` call.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return void
+	 */
+	public function maybe_upgrade(): void {
+		$stored = (string) get_option( Plugin::VERSION_KEY, '' );
+
+		if ( Plugin::VERSION === $stored ) {
+			return;
+		}
+
+		// Read before any migration writes the option below.
+		$is_upgrade = '' !== $stored
+			|| false !== get_option( Plugin::OPTION_KEY, false )
+			|| null !== get_option( 'loggedin_maximum', null );
+
+		// On a *first* upgrade to the unified-settings schema, pull
+		// the legacy single-key values into the new option.
+		$this->migrate_legacy_options();
+
+		// Move the pre-library review-notice state onto the keys
+		// `foxelabs/wp-review-notice` expects.
+		$this->migrate_review_notice_keys();
+
+		// Move license activations onto the key the rebranded
+		// `foxelabs/wp-freemius-client` reads.
+		$this->migrate_freemius_activation_data();
+
+		if ( $is_upgrade && ( '' === $stored || version_compare( $stored, '3.4.0', '<' ) ) ) {
+			$this->keep_pre_340_behaviour();
+		}
+
+		update_option( Plugin::VERSION_KEY, Plugin::VERSION );
+	}
+
+	/**
+	 * Rename legacy review-notice keys to the library's layout.
+	 *
+	 * Prior to 3.1 the review notice was hand-rolled in the Admin
+	 * module and stored:
+	 *   - option `loggedin_rating_notice` — unix timestamp of the
+	 *     next scheduled show.
+	 *   - user meta `loggedin_rating_notice_dismissed` — `1` when the
+	 *     user clicked "No thanks".
+	 *
+	 * The `foxelabs/wp-review-notice` library uses the same shapes
+	 * under different names (`loggedin_review_time`,
+	 * `loggedin_review_dismissed`), so a straight rename preserves
+	 * every user's decision.
+	 *
+	 * The option rename is idempotent — a second run finds nothing
+	 * to move. The user-meta rename uses a single `UPDATE` on
+	 * `wp_usermeta` because there is no core API to bulk-rename a
+	 * meta key, and iterating users via `get_users( ['meta_key'…] )`
+	 * would be O(users) on very large sites for no benefit.
+	 *
+	 * @since 3.0.2
+	 *
+	 * @return void
+	 */
+	protected function migrate_review_notice_keys(): void {
+		$legacy_time = get_option( 'loggedin_rating_notice', null );
+
+		// Nothing to migrate — either a fresh install or an install
+		// that was already on the library's schema. Skipping here
+		// also means later version bumps don't re-scan `usermeta`.
+		if ( null === $legacy_time ) {
+			return;
+		}
+
+		// Only seed the new option if it hasn't been written yet —
+		// otherwise a fresh 7-day timer scheduled by the library on
+		// this same request would be clobbered by the older
+		// timestamp.
+		if ( false === get_option( 'loggedin_review_time', false ) ) {
+			update_option( 'loggedin_review_time', $legacy_time );
+		}
+
+		delete_option( 'loggedin_rating_notice' );
+
+		global $wpdb;
+
+		// One-shot rename — no caching layer to invalidate, and
+		// direct SQL is the only way to bulk-rename a meta key in
+		// core. Suppression is scoped to this call only.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+		$wpdb->update(
+			$wpdb->usermeta,
+			array( 'meta_key' => 'loggedin_review_dismissed' ),
+			array( 'meta_key' => 'loggedin_rating_notice_dismissed' )
+		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+	}
+
+	/**
+	 * Move Freemius activations onto the rebranded option key.
+	 *
+	 * The licensing library was renamed from
+	 * `duckdev/freemius-plugin-licensing` to
+	 * `foxelabs/wp-freemius-client` in its 3.0.0 release, and the
+	 * option holding every activation moved with it:
+	 *   - `duckdev_freemius_activation_data` (2.x)
+	 *   - `foxelabs_freemius_activation_data` (3.x)
+	 *
+	 * The library deliberately performs no writes of its own, so the
+	 * rename is ours to handle. Without this, the SDK reads an empty
+	 * option and every license silently reports as inactive —
+	 * premium update delivery stops and the addons screen shows the
+	 * activation form again, with no error to explain why.
+	 *
+	 * The stored shape (activations keyed by Freemius plugin id) did
+	 * not change, so a straight copy is enough.
+	 *
+	 * Ordering matters: `Core::common()` boots us before
+	 * `Core::addons()`, and `Addons` defers `Freemius::get_instance()`
+	 * until `admin_init` or the first read, so this always lands
+	 * before anything reads an activation.
+	 *
+	 * The addon cache transients (`duckdev_freemius_{id}_*`) are
+	 * intentionally left alone — they hold nothing but a 24-hour
+	 * cache of the addon catalogue, repopulate on the next API call,
+	 * and WordPress expires the stale rows itself.
+	 *
+	 * @since 3.2.0
+	 *
+	 * @return void
+	 */
+	protected function migrate_freemius_activation_data(): void {
+		$legacy = get_option( 'duckdev_freemius_activation_data', null );
+
+		// Fresh install, or an upgrade that already ran this.
+		if ( ! is_array( $legacy ) || empty( $legacy ) ) {
+			return;
+		}
+
+		// Never clobber a live activation. If the new key already
+		// holds data, this site activated after upgrading and the
+		// stale 2.x copy would roll that back.
+		$current = get_option( ActivationRepository::OPTION_KEY, null );
+
+		if ( is_array( $current ) && ! empty( $current ) ) {
+			delete_option( 'duckdev_freemius_activation_data' );
+
+			return;
+		}
+
+		// Drop the source only once the destination is written — a
+		// failed write here would otherwise lose the activation for
+		// good. Deliberately the options API and not a direct
+		// `UPDATE wp_options SET option_name`: raw SQL bypasses the
+		// options cache and any persistent object cache, so a cached
+		// read could resurrect the old value.
+		if ( update_option( ActivationRepository::OPTION_KEY, $legacy ) ) {
+			delete_option( 'duckdev_freemius_activation_data' );
+		}
+	}
+
+	/**
+	 * Migrate `loggedin_maximum` + `loggedin_logic` → `loggedin_settings`.
+	 *
+	 * Only runs when the new option has not yet been written —
+	 * otherwise a user who has already saved settings on the new
+	 * schema (perhaps from a hotfix release) would have their values
+	 * silently overwritten by stale legacy keys.
+	 *
+	 * The legacy keys are intentionally NOT deleted here: an addon
+	 * may still read them. The uninstall handler removes them when
+	 * the user actually deletes the plugin.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return void
+	 */
+	protected function migrate_legacy_options(): void {
+		$existing = get_option( Plugin::OPTION_KEY, null );
+		if ( is_array( $existing ) && ! empty( $existing ) ) {
+			return;
+		}
+
+		$legacy_max   = get_option( 'loggedin_maximum', null );
+		$legacy_logic = get_option( 'loggedin_logic', null );
+
+		// Nothing to migrate — fresh install or an upgrade from
+		// a version that never wrote either legacy key.
+		if ( null === $legacy_max && null === $legacy_logic ) {
+			return;
+		}
+
+		$settings = Settings::instance()->defaults();
+
+		if ( null !== $legacy_max ) {
+			$settings['maximum'] = max( 1, (int) $legacy_max );
+		}
+
+		if (
+			null !== $legacy_logic &&
+			in_array( $legacy_logic, array( 'allow', 'logout_oldest', 'block' ), true )
+		) {
+			$settings['logic'] = (string) $legacy_logic;
+		}
+
+		update_option( Plugin::OPTION_KEY, $settings );
+	}
+
+	/**
+	 * Keep a site upgrading from before 3.4.0 working as it did.
+	 *
+	 * 3.4.0 turns on self-unlock by email and exempts administrators
+	 * from the limit. New installs get both; an upgraded site gets
+	 * neither until an admin turns them on, so nobody finds their
+	 * limits behaving differently after an update. A value already
+	 * stored (set on an earlier pass, or by hand) is left alone.
+	 *
+	 * While administrators stay limited, a one-time notice suggests
+	 * the exemption ({@see ExemptAdminsNotice}).
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	protected function keep_pre_340_behaviour(): void {
+		$stored = get_option( Plugin::OPTION_KEY, array() );
+		$stored = is_array( $stored ) ? $stored : array();
+
+		$settings = array_merge(
+			Settings::instance()->defaults(),
+			array(
+				'unlock'        => false,
+				'exempt_admins' => false,
+			),
+			$stored
+		);
+
+		update_option( Plugin::OPTION_KEY, $settings );
+
+		if ( ! $settings['exempt_admins'] ) {
+			update_option( ExemptAdminsNotice::OPTION, 1, false );
+		}
+	}
+}
