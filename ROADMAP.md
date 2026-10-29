@@ -402,20 +402,47 @@ Settled 2026-09-26 unless dated otherwise.
 ## Progress
 
 - [x] A1 kit components and tokens, ported from Convocept — branch
-      `feature/admin-kit`, 2026-10-26
-- [x] A2 screen: sidebar, Login limits, Auto logout, Sessions, Add-ons, Help
-      (BundleCard waits for the bundle plan in Phase D)
+      `feature/admin-kit`, 2026-10-26. 2026-10-29: TextareaField and
+      TableCard added; the kit is exposed to add-on scripts as
+      `window.loggedin.ui`
+- [x] A2 screen: sidebar, Login limits, Lockout & recovery, Auto logout,
+      Sessions, Add-ons, Help (BundleCard waits for the bundle plan in Phase D)
 - [x] A3 `loggedin_settings_schema` (pages, cards, fields) and legacy
-      panel/tab compatibility, checked with Limit Per Role and Real-time Logout
-- [ ] A3 minimum-core-version Notice for outdated add-ons
-- [ ] A5 QA (desktop and 375px checked; keyboard, RTL, colour schemes, WP 6.5 left)
-- [ ] Phase A4 — add-on UI migrations
+      panel/tab compatibility, checked with Limit Per Role and Real-time Logout.
+      2026-10-29: `role-table` fields, fields without a `key` (whole option),
+      `default_from`, `unit_one`
+- [x] A3 notice for add-ons older than the new screen (Active Sessions 1.2.0,
+      Limit Per Role 2.2.0, Real-time Logout 2.2.0) — 2026-10-29
+- [x] A4 add-on UI migrations, each on its own `feature/admin-kit` branch,
+      uncommitted — 2026-10-29:
+      Active Sessions 1.2.0 (Manage › Active sessions on the kit),
+      Limit Per Role 2.2.0 and Real-time Logout 2.2.0 (schema cards, no admin
+      bundle on core 3.4.0+), Limit Per User 2.2.0 (profile field restyled;
+      security fix: the field now needs `edit_users`, so users can no longer
+      raise their own limit from their profile).
+      Each keeps its old UI on core before 3.4.0
+- [ ] A5 QA. Done: PHPUnit on WordPress 7.1 and 6.5.14, JS lint, phpcs.
+      Found and fixed: the bundles need `react-jsx-runtime`, which WordPress
+      only registers from 6.6, so 6.5 showed a blank screen; core now
+      registers a shim on its screen. Left: browser pass at 1280/782/390px,
+      keyboard only, RTL, two colour schemes, contrast, Windows high
+      contrast, old/new core and add-on combinations
 - [x] B8 auto logout in core, add-on takeover, REST idle-logout error —
-      `feature/admin-kit`, 2026-10-26 (left: Freemius licence check, stop
-      selling, docs move, archive the add-on repo)
+      `feature/admin-kit`, 2026-10-26. Docs moved to a core page with a
+      redirect, 2026-10-29 (docs repo branch `loggedin-3.4.0`). Left:
+      Freemius licence check, stop selling, archive the add-on repo
 - [x] B1 self-unlock and "Don't limit administrators", B3 Users list, B5
-      password-change sign-out — `feature/admin-kit`, 2026-10-26 (left: the
-      one-time "exempt administrators" notice from decision 6)
-- [ ] Phase B — B2, B4, B6, B7
+      password-change sign-out — `feature/admin-kit`, 2026-10-26. One-time
+      "exempt administrators" notice (decision 6), 2026-10-29
+- [x] B2 limit message setting, displaced notice and redirect — 2026-10-29.
+      The notice matches the exact session Loggedin ended (its verifier),
+      not a time window, so other sign-outs never show it
+- [x] B4 "Your sessions" on the profile; a count on other users' profiles —
+      2026-10-29. WordPress's own "Log Out Everywhere Else" stays the way to
+      end the rest. Single-session writes go through `Session_Store`
+      (also used by Logout Oldest and WP-CLI)
+- [x] B6 Logout Oldest and Logout All enforced as a session is created —
+      2026-10-29. Not yet tested against the named plugins; the docs say so
+- [x] B7 readme, FAQ and docs pages — 2026-10-29
 - [ ] Phase C — Login History, Membership Limits, Login Alerts, Active Sessions upgrade
 - [ ] Phase D — bundle plan, discovery

@@ -124,7 +124,7 @@ final class Settings {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @return array{maximum: int, logic: string}
+	 * @return array<string, mixed>
 	 */
 	public function defaults(): array {
 		/**
@@ -137,14 +137,17 @@ final class Settings {
 		return apply_filters(
 			'loggedin_settings_defaults',
 			array(
-				'maximum'          => 1,
-				'logic'            => 'allow',
+				'maximum'            => 1,
+				'logic'              => 'allow',
 				// New installs get these on; the Upgrader turns the
 				// first two off on sites upgrading from before 3.4.0,
 				// so an existing site behaves the same until changed.
-				'unlock'           => true,
-				'exempt_admins'    => true,
-				'password_signout' => true,
+				'unlock'             => true,
+				'exempt_admins'      => true,
+				'password_signout'   => true,
+				// Empty means the built-in message and no redirect.
+				'message'            => '',
+				'displaced_redirect' => '',
 			)
 		);
 	}
@@ -195,16 +198,20 @@ final class Settings {
 	}
 
 	/**
-	 * Replace the stored settings with a sanitized payload.
+	 * Store a sanitized payload over the current settings.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Keys missing from `$values` keep their stored value.
 	 *
 	 * @param array<string, mixed> $values Raw input.
 	 *
 	 * @return bool True if WP wrote to the DB.
 	 */
 	public function update( array $values ): bool {
-		return update_option( Plugin::OPTION_KEY, $this->sanitize( $values ) );
+		// Over the current values, so a partial write keeps the rest:
+		// rebuilding from defaults would quietly turn on switches that
+		// an upgraded site keeps off (`unlock`, `exempt_admins`).
+		return update_option( Plugin::OPTION_KEY, $this->sanitize( array_merge( $this->all(), $values ) ) );
 	}
 
 	/**
@@ -233,22 +240,28 @@ final class Settings {
 						'type'                 => 'object',
 						'additionalProperties' => false,
 						'properties'           => array(
-							'maximum'          => array(
+							'maximum'            => array(
 								'type'    => 'integer',
 								'minimum' => 1,
 							),
-							'logic'            => array(
+							'logic'              => array(
 								'type' => 'string',
 								'enum' => self::ALLOWED_LOGICS,
 							),
-							'unlock'           => array(
+							'unlock'             => array(
 								'type' => 'boolean',
 							),
-							'exempt_admins'    => array(
+							'exempt_admins'      => array(
 								'type' => 'boolean',
 							),
-							'password_signout' => array(
+							'password_signout'   => array(
 								'type' => 'boolean',
+							),
+							'message'            => array(
+								'type' => 'string',
+							),
+							'displaced_redirect' => array(
+								'type' => 'string',
 							),
 						),
 					),
@@ -296,6 +309,28 @@ final class Settings {
 			if ( isset( $input[ $key ] ) ) {
 				$out[ $key ] = (bool) $input[ $key ];
 			}
+		}
+
+		// Shown inside the login error, so a link and emphasis are allowed.
+		if ( isset( $input['message'] ) ) {
+			$out['message'] = trim(
+				wp_kses(
+					(string) $input['message'],
+					array(
+						'a'      => array( 'href' => true ),
+						'strong' => array(),
+						'em'     => array(),
+					)
+				)
+			);
+		}
+
+		// Only a page on this site (or a host allowed for redirects):
+		// `wp_safe_redirect()` would swap anything else for wp-admin.
+		if ( isset( $input['displaced_redirect'] ) ) {
+			$url = esc_url_raw( trim( (string) $input['displaced_redirect'] ), array( 'http', 'https' ) );
+
+			$out['displaced_redirect'] = '' === $url ? '' : wp_validate_redirect( $url, '' );
 		}
 
 		return $out;

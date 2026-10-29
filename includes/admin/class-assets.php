@@ -20,6 +20,7 @@ namespace FoxeLabs\Loggedin\Admin;
 use FoxeLabs\Loggedin\Addons\Addons;
 use FoxeLabs\Loggedin\Auto_Logout\Settings as Auto_Logout_Settings;
 use FoxeLabs\Loggedin\Contracts\Singleton;
+use FoxeLabs\Loggedin\Front\Session_Guard;
 use FoxeLabs\Loggedin\Plugin;
 
 defined( 'WPINC' ) || die;
@@ -70,7 +71,38 @@ final class Assets {
 	 * @return void
 	 */
 	protected function init(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'register_jsx_runtime' ), 0 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
+	}
+
+	/**
+	 * Register `react-jsx-runtime` where WordPress doesn't (6.5).
+	 *
+	 * The admin bundle, and the bundles of add-ons that draw on this
+	 * screen, depend on it. WordPress registers it from 6.6; without it,
+	 * 6.5 drops those bundles and the screen stays blank. Runs before
+	 * any bundle is enqueued, and only on this screen.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string $hook Current admin screen hook.
+	 *
+	 * @return void
+	 */
+	public function register_jsx_runtime( string $hook ): void {
+		if ( self::SCREEN !== $hook || wp_script_is( 'react-jsx-runtime', 'registered' ) ) {
+			return;
+		}
+
+		$asset = $this->manifest( Plugin::dir() . 'build/react-jsx-runtime.asset.php' );
+
+		wp_register_script(
+			'react-jsx-runtime',
+			Plugin::url() . 'build/react-jsx-runtime.js',
+			array( 'react' ),
+			$asset['version'],
+			true
+		);
 	}
 
 	/**
@@ -174,26 +206,28 @@ final class Assets {
 	 */
 	private function script_vars(): array {
 		$vars = array(
-			'version'      => Plugin::VERSION,
-			'slug'         => Plugin::SLUG,
-			'name'         => __( 'Loggedin', 'loggedin' ),
-			'page'         => self::ENTRY,
-			'restUrl'      => esc_url_raw( rest_url( Plugin::REST_NAMESPACE . '/' ) ),
-			'restNonce'    => wp_create_nonce( 'wp_rest' ),
-			'adminUrl'     => esc_url_raw( admin_url() ),
-			'wpVersion'    => get_bloginfo( 'version' ),
-			'phpVersion'   => PHP_VERSION,
-			'urls'         => array(
+			'version'        => Plugin::VERSION,
+			'slug'           => Plugin::SLUG,
+			'name'           => __( 'Loggedin', 'loggedin' ),
+			'page'           => self::ENTRY,
+			'restUrl'        => esc_url_raw( rest_url( Plugin::REST_NAMESPACE . '/' ) ),
+			'restNonce'      => wp_create_nonce( 'wp_rest' ),
+			'adminUrl'       => esc_url_raw( admin_url() ),
+			'homeUrl'        => esc_url_raw( home_url( '/' ) ),
+			'wpVersion'      => get_bloginfo( 'version' ),
+			'phpVersion'     => PHP_VERSION,
+			'urls'           => array(
 				'docs'     => 'https://docs.foxelabs.com/software/loggedin/',
 				'support'  => 'https://wordpress.org/support/plugin/loggedin/',
 				'review'   => 'https://wordpress.org/support/plugin/loggedin/reviews/#new-post',
 				'contact'  => 'https://foxelabs.com/contact',
 				'foxelabs' => 'https://foxelabs.com',
 			),
-			'logics'       => $this->logics_payload(),
-			'activeAddons' => $this->active_addon_slugs(),
-			'roles'        => array_map( 'translate_user_role', wp_roles()->get_names() ),
-			'autoLogout'   => array(
+			'logics'         => $this->logics_payload(),
+			'defaultMessage' => Session_Guard::default_message(),
+			'activeAddons'   => $this->active_addon_slugs(),
+			'roles'          => array_map( 'translate_user_role', wp_roles()->get_names() ),
+			'autoLogout'     => array(
 				'max' => array(
 					'idle_timeout'      => Auto_Logout_Settings::MAX_IDLE_TIMEOUT,
 					'warning'           => Auto_Logout_Settings::MAX_WARNING,
@@ -201,14 +235,14 @@ final class Assets {
 					'remember_lifetime' => Auto_Logout_Settings::MAX_REMEMBER_LIFETIME,
 				),
 			),
-			'schema'       => $this->settings_schema(),
+			'schema'         => $this->settings_schema(),
 		);
 
 		/**
 		 * Filter the localised script vars for the admin app.
 		 *
 		 * @since 3.0.0
-		 * @since 3.4.0 Adds `wpVersion`, `phpVersion`, `urls`, `activeAddons`, `roles`, `autoLogout` and `schema`.
+		 * @since 3.4.0 Adds `wpVersion`, `phpVersion`, `urls`, `defaultMessage`, `homeUrl`, `activeAddons`, `roles`, `autoLogout` and `schema`.
 		 *
 		 * @param array $vars Vars passed into the React tree.
 		 */
@@ -307,12 +341,22 @@ final class Assets {
 	 *
 	 * A page joins the sidebar group `group` names: `settings` (the
 	 * default), `manage` or `more`. A card goes on the page `page` names,
-	 * a core page (`login-limits`, `auto-logout`, `sessions`) or one
+	 * a core page (`login-limits`, `lockout`, `auto-logout`, `sessions`) or one
 	 * declared here; without one it goes on Login limits. Field `type`
-	 * is one of `number`, `select`, `toggle` or `text`. `number` takes
-	 * `unit`, `min` and `max`; `select` takes `options` (`value`,
-	 * `label`, optional `help`) and `cast` (`int`); any field takes
-	 * `default` and `show_if` (`key`, `equals`).
+	 * is one of `number`, `select`, `toggle`, `text` or `role-table`.
+	 * `number` takes `unit`, `min` and `max`; `select` takes `options`
+	 * (`value`, `label`, optional `help`) and `cast` (`int`); any field
+	 * takes `default` and `show_if` (`key`, `equals`).
+	 *
+	 * A field with a `key` edits that key of an object option. Leave
+	 * `key` out to edit a whole option that holds one value. A
+	 * `role-table` always edits a whole option holding a
+	 * `{ role: number }` map, one row per role, and takes `label` (the
+	 * number's), `unit`, `min`, `max`, `help`, `add_label`, and `default`
+	 * or `default_from` (an `option.key` such as
+	 * `loggedin_settings.maximum`) for a new row's number. A `number`
+	 * field may add `unit_one`, the unit's singular, used when the value
+	 * is 1.
 	 *
 	 * @since 3.4.0
 	 *

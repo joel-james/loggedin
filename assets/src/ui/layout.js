@@ -348,6 +348,38 @@ export function Card( { title, description, icon, action, footer, children } ) {
 	);
 }
 
+/**
+ * A card holding a table, edge to edge.
+ *
+ * The title row keeps the card's padding; the table (a DataViews list,
+ * or a plain `<table>`) fills the rest. The stylesheet draws DataViews
+ * inside it in the kit's style, so an add-on that bundles its own
+ * DataViews still matches the screen.
+ *
+ * @param {Object}  props               Props.
+ * @param {string}  props.title         Card title.
+ * @param {string}  [props.description] One sentence under the title.
+ * @param {Element} [props.action]      One button at the end of the title row.
+ * @param {Element} props.children      The table.
+ * @return {Element} Card.
+ */
+export function TableCard( { title, description, action, children } ) {
+	return (
+		<section className="loggedin-card loggedin-table-card">
+			<div className="loggedin-card__head">
+				<div className="loggedin-card__text">
+					<h2 className="loggedin-card__title">{ title }</h2>
+					{ description && (
+						<p className="loggedin-card__desc">{ description }</p>
+					) }
+				</div>
+				{ action }
+			</div>
+			<div className="loggedin-table-card__body">{ children }</div>
+		</section>
+	);
+}
+
 const NOTICE_ICONS = {
 	success: 'success',
 	error: 'error',

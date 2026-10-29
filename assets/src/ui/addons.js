@@ -128,6 +128,37 @@ export function AddonCard( {
 }
 
 /**
+ * A grey stand-in for an AddonCard while the list loads.
+ *
+ * Same frame and rows as the card, so the grid doesn't jump when the
+ * real cards arrive. Hidden from screen readers: the page announces
+ * the loading once.
+ *
+ * @return {Element} Placeholder card.
+ */
+export function AddonCardSkeleton() {
+	return (
+		<div
+			className="loggedin-addon loggedin-addon--skeleton"
+			aria-hidden="true"
+		>
+			<div className="loggedin-addon__head">
+				<span className="loggedin-addon__icon loggedin-skeleton" />
+				<span className="loggedin-skeleton loggedin-skeleton--title" />
+			</div>
+			<div className="loggedin-addon__desc">
+				<span className="loggedin-skeleton loggedin-skeleton--line" />
+				<span className="loggedin-skeleton loggedin-skeleton--line loggedin-skeleton--short" />
+			</div>
+			<div className="loggedin-addon__footer">
+				<span className="loggedin-skeleton loggedin-skeleton--status" />
+				<span className="loggedin-skeleton loggedin-skeleton--button" />
+			</div>
+		</div>
+	);
+}
+
+/**
  * A button that opens a store page in a new tab, led by an icon naming
  * the action (cart, download) rather than the external-link icon.
  *

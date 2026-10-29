@@ -31,8 +31,11 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin;
 
 use FoxeLabs\Loggedin\Addons\Addons;
+use FoxeLabs\Loggedin\Addons\Outdated_Addons;
 use FoxeLabs\Loggedin\Admin\Admin;
 use FoxeLabs\Loggedin\Admin\Assets;
+use FoxeLabs\Loggedin\Admin\Exempt_Admins_Notice;
+use FoxeLabs\Loggedin\Admin\Profile_Sessions;
 use FoxeLabs\Loggedin\Admin\Users_List;
 use FoxeLabs\Loggedin\Api\Addons as Addons_Api;
 use FoxeLabs\Loggedin\Api\Sessions as Sessions_Api;
@@ -43,6 +46,7 @@ use FoxeLabs\Loggedin\Auto_Logout\Retired_Addon;
 use FoxeLabs\Loggedin\Auto_Logout\Settings as Auto_Logout_Settings;
 use FoxeLabs\Loggedin\Cli\Commands;
 use FoxeLabs\Loggedin\Contracts\Singleton;
+use FoxeLabs\Loggedin\Front\Displaced;
 use FoxeLabs\Loggedin\Front\Last_Login;
 use FoxeLabs\Loggedin\Front\Logout_Epoch;
 use FoxeLabs\Loggedin\Front\Password_Signout;
@@ -107,6 +111,7 @@ final class Core {
 		Unlock::instance();
 		Password_Signout::instance();
 		Last_Login::instance();
+		Displaced::instance();
 
 		// Auto logout: idle timeout and session length.
 		Retired_Addon::instance();
@@ -124,6 +129,9 @@ final class Core {
 			Admin::instance();
 			Assets::instance();
 			Users_List::instance();
+			Profile_Sessions::instance();
+			Exempt_Admins_Notice::instance();
+			Outdated_Addons::instance();
 		}
 	}
 

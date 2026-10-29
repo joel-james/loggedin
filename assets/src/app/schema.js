@@ -6,11 +6,74 @@
  * `loggedin_settings`), edited through core-data, so the page header's
  * Save saves them with everything else. The option must be registered
  * with `show_in_rest`.
+ *
+ * A field with a `key` edits that key of an object option. A field
+ * without one edits the whole option: a single value, or for
+ * `role-table` a `{ role: number }` map.
  */
+import { store as coreStore, useEntityProp } from '@wordpress/core-data';
+import { useSelect } from '@wordpress/data';
 import { Card, NumberField, SelectField, TextField, Toggle } from '../ui';
 import useOption from '../hooks/use-option';
+import { RoleTable } from './role-table';
 
 const CORE_OPTION = 'loggedin_settings';
+
+/**
+ * Error key for a field: `option.key`, or the option alone.
+ *
+ * @param {Object} field Field declaration.
+ * @return {string} Key.
+ */
+export const errorKey = ( field ) => {
+	const option = field.option || CORE_OPTION;
+
+	if ( 'role-table' === field.type ) {
+		return `${ option }.`;
+	}
+
+	return undefined === field.key ? option : `${ option }.${ field.key }`;
+};
+
+/**
+ * A value named `option.key` in the edited site settings, if it's a number.
+ *
+ * @param {Object} site Edited `root/site` record.
+ * @param {string} path `option.key`, e.g. `loggedin_settings.maximum`.
+ * @return {number|undefined} Value.
+ */
+const fromOption = ( site, path ) => {
+	if ( ! path ) {
+		return undefined;
+	}
+
+	const [ option, key ] = path.split( '.' );
+	const value = Number( site?.[ option ]?.[ key ] );
+
+	return Number.isInteger( value ) ? value : undefined;
+};
+
+/**
+ * Read and edit one field's value, in an object option or a whole one.
+ *
+ * @param {Object} field Field declaration.
+ * @return {{ get: Function, set: Function, values: Object }} Accessors.
+ */
+function useFieldValue( field ) {
+	const option = field.option || CORE_OPTION;
+	const keyed = useOption( option );
+	const [ whole, setWhole ] = useEntityProp( 'root', 'site', option );
+
+	if ( undefined !== field.key ) {
+		return keyed;
+	}
+
+	return {
+		values: keyed.values,
+		get: ( key, fallback ) => ( undefined === whole ? fallback : whole ),
+		set: ( key, value ) => setWhole( value ),
+	};
+}
 
 /**
  * One declared field.
@@ -18,17 +81,50 @@ const CORE_OPTION = 'loggedin_settings';
  * @param {Object} props        Props.
  * @param {Object} props.field  Field declaration.
  * @param {Object} props.errors Errors by `option.key`.
+ * @param {Object} props.roles  Every role: { slug: name }.
  * @return {Element|null} Field.
  */
-function SchemaField( { field, errors } ) {
+function SchemaField( { field, errors, roles } ) {
 	const option = field.option || CORE_OPTION;
-	const { get, set } = useOption( option );
+	const { get, set, values } = useFieldValue( field );
+	const conditions = useOption( option );
+	const site = useSelect(
+		( select ) =>
+			select( coreStore ).getEditedEntityRecord( 'root', 'site' ),
+		[]
+	);
 
-	if ( field.show_if && get( field.show_if.key ) !== field.show_if.equals ) {
+	if (
+		field.show_if &&
+		conditions.get( field.show_if.key ) !== field.show_if.equals
+	) {
 		return null;
 	}
 
 	switch ( field.type ) {
+		case 'role-table':
+			return (
+				<RoleTable
+					value={ values }
+					roles={ roles }
+					fallback={
+						fromOption( site, field.default_from ) ??
+						field.default ??
+						field.min ??
+						1
+					}
+					help={ field.help }
+					errors={ errors }
+					option={ option }
+					label={ field.label }
+					unit={ field.unit }
+					min={ field.min ?? 1 }
+					max={ field.max }
+					addLabel={ field.add_label }
+					onChange={ ( map ) => set( undefined, map ) }
+				/>
+			);
+
 		case 'toggle':
 			return (
 				<Toggle
@@ -71,12 +167,17 @@ function SchemaField( { field, errors } ) {
 			return (
 				<NumberField
 					label={ field.label }
-					unit={ field.unit }
+					unit={
+						1 === Number( get( field.key, field.default ) ) &&
+						field.unit_one
+							? field.unit_one
+							: field.unit
+					}
 					help={ field.help }
 					min={ field.min }
 					max={ field.max }
 					value={ get( field.key, field.default ?? '' ) }
-					error={ errors[ `${ option }.${ field.key }` ] }
+					error={ errors[ errorKey( field ) ] }
 					onChange={ ( next ) => set( field.key, next ) }
 				/>
 			);
@@ -100,9 +201,10 @@ function SchemaField( { field, errors } ) {
  * @param {Object} props.card   Card declaration: { id, title, description }.
  * @param {Array}  props.fields Every declared field.
  * @param {Object} props.errors Errors by `option.key`.
+ * @param {Object} props.roles  Every role: { slug: name }.
  * @return {Element} Card.
  */
-export function SchemaCard( { card, fields, errors } ) {
+export function SchemaCard( { card, fields, errors, roles } ) {
 	return (
 		<Card title={ card.title } description={ card.description }>
 			{ fields
@@ -112,6 +214,7 @@ export function SchemaCard( { card, fields, errors } ) {
 						key={ `${ field.option || '' }:${ field.key }` }
 						field={ field }
 						errors={ errors }
+						roles={ roles }
 					/>
 				) ) }
 		</Card>

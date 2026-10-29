@@ -11,14 +11,12 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { AddonHint, Card, ChoiceTiles, NumberField, Toggle } from '../ui';
+import { AddonHint, Card, ChoiceTiles, NumberField } from '../ui';
 import useOption from '../hooks/use-option';
 
 const DEFAULTS = {
 	maximum: 1,
 	logic: 'allow',
-	unlock: true,
-	exempt_admins: true,
 };
 
 /**
@@ -69,15 +67,6 @@ export function LoginLimitsPage( { boot, errors, navigate, hrefFor } ) {
 					error={ errors[ 'loggedin_settings.maximum' ] }
 					onChange={ ( value ) => set( 'maximum', value ) }
 				/>
-				<Toggle
-					label={ __( 'Don’t limit administrators', 'loggedin' ) }
-					help={ __(
-						'Users who can manage the site can sign in on any number of devices, and are never signed out by the limit.',
-						'loggedin'
-					) }
-					checked={ get( 'exempt_admins' ) }
-					onChange={ ( on ) => set( 'exempt_admins', on ) }
-				/>
 				{ ! boot.activeAddons.includes( 'loggedin-limit-per-role' ) && (
 					<AddonHint
 						href={ hrefFor( 'addons' ) }
@@ -104,20 +93,6 @@ export function LoginLimitsPage( { boot, errors, navigate, hrefFor } ) {
 					options={ logics }
 					onChange={ ( value ) => set( 'logic', value ) }
 				/>
-				{ 'block' === get( 'logic' ) && (
-					<Toggle
-						label={ __(
-							'Let blocked users sign out their other devices',
-							'loggedin'
-						) }
-						help={ __(
-							'The error offers to email a link. Opening it signs the account out everywhere, so the person can log in. Only shown after the right password.',
-							'loggedin'
-						) }
-						checked={ get( 'unlock' ) }
-						onChange={ ( on ) => set( 'unlock', on ) }
-					/>
-				) }
 			</Card>
 		</>
 	);

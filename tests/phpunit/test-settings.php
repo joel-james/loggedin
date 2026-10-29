@@ -7,6 +7,7 @@
 
 declare( strict_types = 1 );
 
+use FoxeLabs\Loggedin\Admin\Exempt_Admins_Notice;
 use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Loggedin\Setup\Settings;
 use FoxeLabs\Loggedin\Setup\Upgrader;
@@ -20,6 +21,7 @@ class Loggedin_Settings_Test extends WP_UnitTestCase {
 		delete_option( Plugin::OPTION_KEY );
 		delete_option( 'loggedin_maximum' );
 		delete_option( 'loggedin_logic' );
+		delete_option( Exempt_Admins_Notice::OPTION );
 
 		parent::tear_down();
 	}
@@ -172,5 +174,59 @@ class Loggedin_Settings_Test extends WP_UnitTestCase {
 
 		$this->assertTrue( Settings::instance()->get( 'unlock' ) );
 		$this->assertTrue( Settings::instance()->get( 'exempt_admins' ) );
+	}
+
+	public function test_an_upgrade_that_keeps_limiting_admins_suggests_the_exemption(): void {
+		update_option( Plugin::VERSION_KEY, '3.2.0' );
+		$this->store_old_option( array( 'maximum' => 2 ) );
+
+		Upgrader::instance()->maybe_upgrade();
+
+		$this->assertTrue( Exempt_Admins_Notice::instance()->is_due() );
+	}
+
+	public function test_the_suggestion_goes_once_admins_are_exempt(): void {
+		update_option( Exempt_Admins_Notice::OPTION, 1 );
+		Settings::instance()->update( array( 'exempt_admins' => true ) );
+
+		$this->assertFalse( Exempt_Admins_Notice::instance()->is_due() );
+		$this->assertFalse( get_option( Exempt_Admins_Notice::OPTION ) );
+	}
+
+	public function test_a_new_install_gets_no_suggestion(): void {
+		delete_option( Plugin::VERSION_KEY );
+		delete_option( Plugin::OPTION_KEY );
+
+		Upgrader::instance()->maybe_upgrade();
+
+		$this->assertFalse( Exempt_Admins_Notice::instance()->is_due() );
+	}
+
+	public function test_the_message_keeps_a_link_and_drops_scripts(): void {
+		$out = Settings::instance()->sanitize(
+			array( 'message' => ' Too many devices. <a href="https://example.org/help">Help</a><script>x()</script> ' )
+		);
+
+		$this->assertSame( 'Too many devices. <a href="https://example.org/help">Help</a>x()', $out['message'] );
+	}
+
+	public function test_the_redirect_must_be_a_web_address(): void {
+		$this->assertSame( 'https://example.org/account', Settings::instance()->sanitize( array( 'displaced_redirect' => ' https://example.org/account ' ) )['displaced_redirect'] );
+		$this->assertSame( '', Settings::instance()->sanitize( array( 'displaced_redirect' => 'javascript:alert(1)' ) )['displaced_redirect'] );
+	}
+
+	public function test_the_redirect_must_stay_on_this_site(): void {
+		$this->assertSame( '', Settings::instance()->sanitize( array( 'displaced_redirect' => 'https://elsewhere.test/page' ) )['displaced_redirect'] );
+	}
+
+	public function test_a_partial_update_keeps_the_other_settings(): void {
+		update_option( Plugin::VERSION_KEY, '3.2.0' );
+		$this->store_old_option( array( 'maximum' => 2 ) );
+		Upgrader::instance()->maybe_upgrade();
+
+		Settings::instance()->update( array( 'maximum' => 3 ) );
+
+		$this->assertFalse( Settings::instance()->get( 'exempt_admins' ) );
+		$this->assertSame( 3, Settings::instance()->get( 'maximum' ) );
 	}
 }

@@ -18,6 +18,7 @@ declare( strict_types = 1 );
 
 use FoxeLabs\Loggedin\Auto_Logout\Idle_Guard;
 use FoxeLabs\Loggedin\Auto_Logout\Settings;
+use FoxeLabs\Loggedin\Front\Session_Guard;
 
 /**
  * @group idle-guard
@@ -30,6 +31,13 @@ class Loggedin_Auto_Logout_Idle_Guard_Test extends WP_UnitTestCase {
 	 * @var string
 	 */
 	private $token = '';
+
+	public function set_up(): void {
+		parent::set_up();
+
+		// These tests sign one user in on several devices.
+		remove_filter( 'attach_session_information', array( Session_Guard::instance(), 'enforce_on_create' ) );
+	}
 
 	public function tear_down(): void {
 		delete_option( Settings::OPTION_KEY );

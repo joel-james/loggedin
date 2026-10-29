@@ -93,7 +93,10 @@ function initialRoute() {
  * @return {Element} App.
  */
 export default function App( { boot } ) {
-	const pages = useMemo( () => resolvePages( boot.schema ), [ boot ] );
+	const pages = useMemo(
+		() => resolvePages( boot.schema, boot.roles ),
+		[ boot ]
+	);
 	const [ route, setRoute ] = useState( initialRoute );
 	const navigated = useRef( false );
 	const wpNotices = useRef();
@@ -108,7 +111,13 @@ export default function App( { boot } ) {
 	);
 
 	const errors = useMemo(
-		() => validate( site, boot.schema.fields || [], boot.autoLogout.max ),
+		() =>
+			validate(
+				site,
+				boot.schema.fields || [],
+				boot.autoLogout.max,
+				boot.homeUrl
+			),
 		[ site, boot ]
 	);
 

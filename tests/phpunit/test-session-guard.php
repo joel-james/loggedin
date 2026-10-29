@@ -26,6 +26,10 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 
 		$this->user_id = self::factory()->user->create( array( 'user_pass' => 'correct-horse' ) );
 
+		// Seed sessions past the limit: new sessions are limited as they're
+		// created, and these tests drive the limit by hand.
+		remove_filter( 'attach_session_information', array( Session_Guard::instance(), 'enforce_on_create' ) );
+
 		// Seed two session tokens so any limit <= 2 trips the check.
 		$manager = WP_Session_Tokens::get_instance( $this->user_id );
 		$manager->create( time() + HOUR_IN_SECONDS );
@@ -35,6 +39,7 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 	public function tear_down(): void {
 		delete_option( Plugin::OPTION_KEY );
 		remove_all_filters( 'loggedin_bypass' );
+		remove_all_filters( 'loggedin_reached_limit' );
 		remove_all_actions( 'loggedin_login_blocked' );
 
 		parent::tear_down();
@@ -139,7 +144,7 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 	}
 
 	public function test_logout_oldest_mode_removes_one_session(): void {
-		$this->set_settings( 1, 'logout_oldest' );
+		$this->set_settings( 2, 'logout_oldest' );
 
 		Session_Guard::instance()->validate_allow_logic( true, '', '', $this->user_id );
 
@@ -165,5 +170,100 @@ class Loggedin_Session_Guard_Test extends WP_UnitTestCase {
 		$result = Session_Guard::instance()->validate_block_logic( $error );
 
 		$this->assertSame( $error, $result );
+	}
+
+	/**
+	 * A session made the way social and magic-link logins make one.
+	 *
+	 * @return string Raw token.
+	 */
+	private function create_like_a_plugin(): string {
+		add_filter( 'attach_session_information', array( Session_Guard::instance(), 'enforce_on_create' ), 10, 2 );
+
+		return WP_Session_Tokens::get_instance( $this->user_id )->create( time() + HOUR_IN_SECONDS );
+	}
+
+	public function test_logout_all_applies_to_sessions_made_outside_the_login_form(): void {
+		$this->set_settings( 2, 'allow' );
+
+		$token = $this->create_like_a_plugin();
+
+		$sessions = WP_Session_Tokens::get_instance( $this->user_id );
+		$this->assertCount( 1, $sessions->get_all() );
+		$this->assertNotNull( $sessions->get( $token ) );
+	}
+
+	public function test_logout_oldest_applies_to_sessions_made_outside_the_login_form(): void {
+		$this->set_settings( 2, 'logout_oldest' );
+
+		$this->create_like_a_plugin();
+
+		$this->assertCount( 2, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
+	}
+
+	public function test_block_new_cannot_refuse_a_session_made_outside_the_login_form(): void {
+		$this->set_settings( 2, 'block' );
+
+		$this->create_like_a_plugin();
+
+		$this->assertCount( 3, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
+	}
+
+	public function test_a_session_under_the_limit_ends_nothing(): void {
+		$this->set_settings( 5, 'allow' );
+
+		$this->create_like_a_plugin();
+
+		$this->assertCount( 3, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
+	}
+
+	public function test_the_blocked_login_message_can_be_changed(): void {
+		Settings::instance()->update(
+			array(
+				'maximum' => 1,
+				'logic'   => 'block',
+				'unlock'  => false,
+				'message' => 'Sign out of a device first.',
+			)
+		);
+
+		$result = Session_Guard::instance()->validate_block_logic( get_user_by( 'id', $this->user_id ), 'correct-horse' );
+
+		$this->assertSame( 'Sign out of a device first.', $result->get_error_message() );
+	}
+
+	public function test_logout_oldest_skips_expired_sessions(): void {
+		$this->set_settings( 2, 'logout_oldest' );
+
+		$sessions            = get_user_meta( $this->user_id, 'session_tokens', true );
+		$sessions['expired'] = array(
+			'expiration' => time() - 1,
+			'login'      => time() - DAY_IN_SECONDS,
+		);
+		update_user_meta( $this->user_id, 'session_tokens', $sessions );
+
+		$this->create_like_a_plugin();
+
+		$this->assertCount( 2, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
+	}
+
+	public function test_logout_oldest_makes_room_after_the_limit_is_lowered(): void {
+		remove_filter( 'attach_session_information', array( Session_Guard::instance(), 'enforce_on_create' ) );
+		WP_Session_Tokens::get_instance( $this->user_id )->create( time() + HOUR_IN_SECONDS );
+
+		$this->set_settings( 1, 'logout_oldest' );
+
+		Session_Guard::instance()->validate_allow_logic( true, '', '', $this->user_id );
+
+		$this->assertCount( 0, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
+	}
+
+	public function test_a_filter_that_never_lets_up_cannot_loop_forever(): void {
+		$this->set_settings( 1, 'logout_oldest' );
+		add_filter( 'loggedin_reached_limit', '__return_true' );
+
+		Session_Guard::instance()->validate_allow_logic( true, '', '', $this->user_id );
+
+		$this->assertCount( 0, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
 	}
 }

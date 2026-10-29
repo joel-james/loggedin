@@ -20,6 +20,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Setup;
 
+use FoxeLabs\Loggedin\Admin\Exempt_Admins_Notice;
 use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Freemius\Storage\ActivationRepository;
@@ -270,6 +271,9 @@ final class Upgrader {
 	 * limits behaving differently after an update. A value already
 	 * stored (set on an earlier pass, or by hand) is left alone.
 	 *
+	 * While administrators stay limited, a one-time notice suggests
+	 * the exemption ({@see Exempt_Admins_Notice}).
+	 *
 	 * @since 3.4.0
 	 *
 	 * @return void
@@ -288,5 +292,9 @@ final class Upgrader {
 		);
 
 		update_option( Plugin::OPTION_KEY, $settings );
+
+		if ( ! $settings['exempt_admins'] ) {
+			update_option( Exempt_Admins_Notice::OPTION, 1, false );
+		}
 	}
 }

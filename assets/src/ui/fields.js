@@ -14,6 +14,7 @@ import {
 	CheckboxControl,
 	SelectControl,
 	TextControl,
+	TextareaControl,
 	ToggleControl,
 } from '@wordpress/components';
 import { useInstanceId } from '@wordpress/compose';
@@ -100,19 +101,21 @@ export function Toggle( { label, help, checked, onChange } ) {
  * to onChange is a number, or '' while the field is empty, so validation
  * can say what to enter.
  *
- * @param {Object}                         props          Props.
- * @param {string}                         props.label    Label.
- * @param {string}                         [props.unit]   Plural noun shown after the number.
- * @param {string}                         [props.help]   What the number does.
- * @param {number}                         props.value    Value.
- * @param {number}                         props.min      Minimum.
- * @param {number}                         props.max      Maximum.
- * @param {string}                         [props.error]  Error text.
- * @param {(value: number|string) => void} props.onChange Receives the new value.
+ * @param {Object}                         props             Props.
+ * @param {string}                         props.label       Label.
+ * @param {boolean}                        [props.hideLabel] Label for screen readers only.
+ * @param {string}                         [props.unit]      Plural noun shown after the number.
+ * @param {string}                         [props.help]      What the number does.
+ * @param {number}                         props.value       Value.
+ * @param {number}                         props.min         Minimum.
+ * @param {number}                         props.max         Maximum.
+ * @param {string}                         [props.error]     Error text.
+ * @param {(value: number|string) => void} props.onChange    Receives the new value.
  * @return {Element} Field.
  */
 export function NumberField( {
 	label,
+	hideLabel = false,
 	unit,
 	help,
 	value,
@@ -125,7 +128,12 @@ export function NumberField( {
 
 	return (
 		<div className={ fieldClass( 'number', error ) }>
-			<BaseControl __nextHasNoMarginBottom id={ id } label={ label }>
+			<BaseControl
+				__nextHasNoMarginBottom
+				id={ id }
+				label={ label }
+				hideLabelFromVision={ hideLabel }
+			>
 				<div
 					className={ `loggedin-affix${
 						error ? ' loggedin-affix--invalid' : ''
@@ -171,15 +179,25 @@ export function NumberField( {
 /**
  * A single-line text input.
  *
- * @param {Object}                  props          Props.
- * @param {string}                  props.label    Label.
- * @param {string}                  [props.help]   Help.
- * @param {string}                  props.value    Value.
- * @param {string}                  [props.error]  Error text.
- * @param {(value: string) => void} props.onChange Receives the new value.
+ * @param {Object}                  props               Props.
+ * @param {string}                  props.label         Label.
+ * @param {string}                  [props.help]        Help.
+ * @param {string}                  props.value         Value.
+ * @param {string}                  [props.placeholder] Shown while empty.
+ * @param {string}                  [props.type]        Input type: 'text' or 'url'.
+ * @param {string}                  [props.error]       Error text.
+ * @param {(value: string) => void} props.onChange      Receives the new value.
  * @return {Element} Field.
  */
-export function TextField( { label, help, value, error, onChange } ) {
+export function TextField( {
+	label,
+	help,
+	value,
+	placeholder,
+	type = 'text',
+	error,
+	onChange,
+} ) {
 	const id = useInstanceId( TextField, 'loggedin-text' );
 
 	return (
@@ -188,8 +206,52 @@ export function TextField( { label, help, value, error, onChange } ) {
 				__next40pxDefaultSize
 				__nextHasNoMarginBottom
 				id={ id }
+				type={ type }
 				label={ label }
 				value={ value }
+				placeholder={ placeholder }
+				aria-invalid={ !! error }
+				aria-describedby={ `${ id }-describe` }
+				onChange={ onChange }
+			/>
+			<Describe id={ `${ id }-describe` } help={ help } error={ error } />
+		</div>
+	);
+}
+
+/**
+ * A few lines of text.
+ *
+ * @param {Object}                  props               Props.
+ * @param {string}                  props.label         Label.
+ * @param {string}                  [props.help]        Help.
+ * @param {string}                  props.value         Value.
+ * @param {string}                  [props.placeholder] Shown while empty.
+ * @param {number}                  [props.rows]        Visible lines.
+ * @param {string}                  [props.error]       Error text.
+ * @param {(value: string) => void} props.onChange      Receives the new value.
+ * @return {Element} Field.
+ */
+export function TextareaField( {
+	label,
+	help,
+	value,
+	placeholder,
+	rows = 3,
+	error,
+	onChange,
+} ) {
+	const id = useInstanceId( TextareaField, 'loggedin-textarea' );
+
+	return (
+		<div className={ fieldClass( 'text', error ) }>
+			<TextareaControl
+				__nextHasNoMarginBottom
+				id={ id }
+				label={ label }
+				value={ value }
+				placeholder={ placeholder }
+				rows={ rows }
 				aria-invalid={ !! error }
 				aria-describedby={ `${ id }-describe` }
 				onChange={ onChange }
@@ -202,17 +264,19 @@ export function TextField( { label, help, value, error, onChange } ) {
 /**
  * Pick one value from a plain list.
  *
- * @param {Object}                  props          Props.
- * @param {string}                  props.label    Label.
- * @param {string}                  [props.help]   Help.
- * @param {string}                  props.value    Value.
- * @param {Array}                   props.options  [{ value, label }].
- * @param {string}                  [props.error]  Error text.
- * @param {(value: string) => void} props.onChange Receives the new value.
+ * @param {Object}                  props             Props.
+ * @param {string}                  props.label       Label.
+ * @param {boolean}                 [props.hideLabel] Label for screen readers only.
+ * @param {string}                  [props.help]      Help.
+ * @param {string}                  props.value       Value.
+ * @param {Array}                   props.options     [{ value, label }].
+ * @param {string}                  [props.error]     Error text.
+ * @param {(value: string) => void} props.onChange    Receives the new value.
  * @return {Element} Field.
  */
 export function SelectField( {
 	label,
+	hideLabel = false,
 	help,
 	value,
 	options,
@@ -228,6 +292,7 @@ export function SelectField( {
 				__nextHasNoMarginBottom
 				id={ id }
 				label={ label }
+				hideLabelFromVision={ hideLabel }
 				value={ value }
 				options={ options }
 				aria-invalid={ !! error }

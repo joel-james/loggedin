@@ -11,6 +11,7 @@
 
 declare( strict_types = 1 );
 
+use FoxeLabs\Loggedin\Front\Session_Guard;
 use FoxeLabs\Loggedin\Front\Unlock;
 use FoxeLabs\Loggedin\Plugin;
 
@@ -30,6 +31,10 @@ class Loggedin_Unlock_Test extends WP_UnitTestCase {
 		parent::set_up();
 
 		$this->user_id = self::factory()->user->create( array( 'user_email' => 'owner@example.com' ) );
+
+		// Seed sessions past the limit: new sessions are limited as they're
+		// created, and these tests drive the limit by hand.
+		remove_filter( 'attach_session_information', array( Session_Guard::instance(), 'enforce_on_create' ) );
 
 		$manager = WP_Session_Tokens::get_instance( $this->user_id );
 		$manager->create( time() + HOUR_IN_SECONDS );

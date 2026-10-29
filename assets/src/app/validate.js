@@ -6,6 +6,7 @@
  * that holds it. While any error stands, Save stays disabled.
  */
 import { __, sprintf } from '@wordpress/i18n';
+import { errorKey } from './schema';
 
 /**
  * The error for a whole number outside its range, or ''.
@@ -44,14 +45,30 @@ export function numberError( value, min, max ) {
 }
 
 /**
+ * Whether two addresses are on the same host.
+ *
+ * @param {string} url  Address to check.
+ * @param {string} home The site's address.
+ * @return {boolean} Same host.
+ */
+const sameHost = ( url, home ) => {
+	try {
+		return new URL( url ).host === new URL( home ).host;
+	} catch ( error ) {
+		return false;
+	}
+};
+
+/**
  * Every error in the edited site settings.
  *
  * @param {Object} site   Edited `root/site` record.
- * @param {Array}  fields Number fields declared by add-ons in PHP.
+ * @param {Array}  fields Fields declared by add-ons in PHP.
  * @param {Object} limits Largest auto logout values, by setting key.
+ * @param {string} [home] The site's address, for same-site checks.
  * @return {Object<string, string>} Error text by `option.key`.
  */
-export function validate( site, fields, limits ) {
+export function validate( site, fields, limits, home ) {
 	const errors = {};
 	const settings = site?.loggedin_settings;
 
@@ -60,6 +77,20 @@ export function validate( site, fields, limits ) {
 
 		if ( message ) {
 			errors[ 'loggedin_settings.maximum' ] = message;
+		}
+
+		const redirect = ( settings.displaced_redirect || '' ).trim();
+
+		if ( redirect && ! /^https?:\/\/[^\s/]+/i.test( redirect ) ) {
+			errors[ 'loggedin_settings.displaced_redirect' ] = __(
+				'Enter a full address, starting with https:// or http://.',
+				'loggedin'
+			);
+		} else if ( redirect && home && ! sameHost( redirect, home ) ) {
+			errors[ 'loggedin_settings.displaced_redirect' ] = __(
+				'Use a page on this site.',
+				'loggedin'
+			);
 		}
 	}
 
@@ -106,7 +137,10 @@ export function validate( site, fields, limits ) {
 		.filter( ( field ) => 'number' === field.type )
 		.forEach( ( field ) => {
 			const option = field.option || 'loggedin_settings';
-			const value = site?.[ option ]?.[ field.key ];
+			const value =
+				undefined === field.key
+					? site?.[ option ]
+					: site?.[ option ]?.[ field.key ];
 
 			// A value never set yet uses the field's default.
 			if ( undefined === value ) {
@@ -116,8 +150,27 @@ export function validate( site, fields, limits ) {
 			const message = numberError( value, field.min, field.max );
 
 			if ( message ) {
-				errors[ `${ option }.${ field.key }` ] = message;
+				errors[ errorKey( field ) ] = message;
 			}
+		} );
+
+	fields
+		.filter( ( field ) => 'role-table' === field.type )
+		.forEach( ( field ) => {
+			const option = field.option || 'loggedin_settings';
+			const map = site?.[ option ];
+
+			if ( ! map || 'object' !== typeof map || Array.isArray( map ) ) {
+				return;
+			}
+
+			Object.entries( map ).forEach( ( [ role, value ] ) => {
+				const message = numberError( value, field.min ?? 1, field.max );
+
+				if ( message ) {
+					errors[ `${ option }.${ role }` ] = message;
+				}
+			} );
 		} );
 
 	return errors;

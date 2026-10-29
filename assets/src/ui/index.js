@@ -15,17 +15,25 @@ export {
 	PageFooter,
 	ExternalLink,
 	Card,
+	TableCard,
 	Notice,
 } from './layout';
 export {
 	Toggle,
 	NumberField,
 	TextField,
+	TextareaField,
 	SelectField,
 	CheckboxList,
 	ChoiceTiles,
 } from './fields';
 export { StatusList, StatTiles, Snackbars } from './feedback';
-export { AddonCard, AddonHint, SectionHead, StoreButton } from './addons';
+export {
+	AddonCard,
+	AddonCardSkeleton,
+	AddonHint,
+	SectionHead,
+	StoreButton,
+} from './addons';
 export { Icon } from './icons';
 export { Button, Modal, Spinner } from '@wordpress/components';

@@ -159,6 +159,12 @@ const PATHS = {
 			<path d="M5 15V6a1 1 0 0 1 1-1h9" />
 		</>
 	),
+	search: (
+		<>
+			<circle cx="10.5" cy="10.5" r="6" />
+			<path d="M15 15l5 5" />
+		</>
+	),
 	refresh: (
 		<>
 			<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3L19.5 9" />

@@ -17,6 +17,16 @@ import { Popover, SlotFillProvider } from '@wordpress/components';
 import domReady from '@wordpress/dom-ready';
 import { createRoot } from '@wordpress/element';
 import App from './app/App';
+import * as ui from './ui';
+
+/*
+ * Add-ons with a screen of their own (Active Sessions) draw it with the
+ * same kit: `window.loggedin.ui.Card`, `.TableCard`, `.Notice` and the
+ * rest. Read it while rendering, not when the add-on's script loads.
+ */
+if ( window.loggedin ) {
+	window.loggedin.ui = ui;
+}
 
 domReady( () => {
 	const root = document.getElementById( 'loggedin-admin' );

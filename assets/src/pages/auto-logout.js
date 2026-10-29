@@ -9,13 +9,14 @@
 /**
  * WordPress dependencies
  */
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
-import { Button, Card, Icon, NumberField, SelectField, Toggle } from '../ui';
+import { Card, NumberField, Toggle } from '../ui';
 import useOption from '../hooks/use-option';
+import { RoleTable } from '../app/role-table';
 
 const OPTION = 'loggedin_auto_logout_settings';
 const ROLE_OPTION = 'loggedin_auto_logout_role_timeouts';
@@ -29,110 +30,6 @@ const DEFAULTS = {
 
 // Offered when idle logout is first turned on.
 const STARTER_TIMEOUT = 15;
-
-/**
- * Timeouts for single roles: one row per role, with its own minutes.
- *
- * Rows come straight from the stored `{ role: minutes }` map, so there
- * is no local state to fall out of step with Discard or Save.
- *
- * @param {Object}   props          Props.
- * @param {Object}   props.value    Stored map.
- * @param {Object}   props.roles    Every role: { slug: name }.
- * @param {number}   props.fallback Minutes for a new row.
- * @param {Object}   props.errors   Errors by `option.key`.
- * @param {Function} props.onChange Receives the new map.
- * @return {Element} Rows and the Add button.
- */
-function RoleTimeouts( { value, roles, fallback, errors, onChange } ) {
-	const rows = Object.entries( value );
-	const unused = Object.keys( roles ).filter( ( slug ) => ! value[ slug ] );
-
-	/**
-	 * Rebuild the map in row order, swapping one row.
-	 *
-	 * @param {string}        role    Row's current role.
-	 * @param {string}        next    Row's new role.
-	 * @param {number|string} minutes Row's minutes.
-	 * @return {void}
-	 */
-	const replace = ( role, next, minutes ) =>
-		onChange(
-			Object.fromEntries(
-				rows.map( ( [ slug, current ] ) =>
-					slug === role ? [ next, minutes ] : [ slug, current ]
-				)
-			)
-		);
-
-	const remove = ( role ) =>
-		onChange(
-			Object.fromEntries( rows.filter( ( [ slug ] ) => slug !== role ) )
-		);
-
-	return (
-		<>
-			{ rows.length > 0 && (
-				<ul className="loggedin-role-rows">
-					{ rows.map( ( [ role, minutes ] ) => (
-						<li key={ role } className="loggedin-role-row">
-							<SelectField
-								label={ __( 'Role', 'loggedin' ) }
-								value={ role }
-								options={ [ role, ...unused ].map(
-									( slug ) => ( {
-										value: slug,
-										label: roles[ slug ] || slug,
-									} )
-								) }
-								onChange={ ( next ) =>
-									replace( role, next, minutes )
-								}
-							/>
-							<NumberField
-								label={ __( 'Sign out after', 'loggedin' ) }
-								unit={ __( 'minutes', 'loggedin' ) }
-								min={ 1 }
-								value={ minutes }
-								error={ errors[ `${ ROLE_OPTION }.${ role }` ] }
-								onChange={ ( next ) =>
-									replace( role, role, next )
-								}
-							/>
-							<Button
-								className="loggedin-role-row__remove"
-								size="compact"
-								icon={ <Icon name="close" /> }
-								label={ sprintf(
-									/* translators: %s: Role name. */
-									__(
-										'Remove the timeout for %s',
-										'loggedin'
-									),
-									roles[ role ] || role
-								) }
-								onClick={ () => remove( role ) }
-							/>
-						</li>
-					) ) }
-				</ul>
-			) }
-			{ unused.length > 0 && (
-				<div>
-					<Button
-						variant="secondary"
-						size="compact"
-						onClick={ () =>
-							onChange( { ...value, [ unused[ 0 ] ]: fallback } )
-						}
-					>
-						{ __( 'Add a role', 'loggedin' ) }
-					</Button>
-				</div>
-			) }
-		</>
-	);
-}
 
 /**
  * Sign out the other devices when a password changes.
@@ -245,13 +142,22 @@ export function AutoLogoutPage( { boot, errors } ) {
 						'loggedin'
 					) }
 				>
-					<RoleTimeouts
+					<RoleTable
 						value={ roleTimeouts.values }
 						roles={ boot.roles }
 						fallback={
 							Number.isInteger( idle ) ? idle : STARTER_TIMEOUT
 						}
 						errors={ errors }
+						option={ ROLE_OPTION }
+						label={ __( 'Sign out after', 'loggedin' ) }
+						unit={ __( 'minutes', 'loggedin' ) }
+						max={ boot.autoLogout.max.idle_timeout }
+						/* translators: %s: Role name. */
+						removeLabel={ __(
+							'Remove the timeout for %s',
+							'loggedin'
+						) }
 						onChange={ ( map ) =>
 							// The whole map is the option, so it replaces the stored one.
 							roleTimeouts.replace( map )

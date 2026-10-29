@@ -20,13 +20,13 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Cli;
 
 use FoxeLabs\Loggedin\Front\Logout_Epoch;
+use FoxeLabs\Loggedin\Front\Session_Store;
 use WP_CLI;
 use WP_CLI\Fetchers\User as User_Fetcher;
 use WP_CLI\Formatter;
 use WP_CLI\Utils;
 use WP_Session_Tokens;
 use WP_User;
-use WP_User_Meta_Session_Tokens;
 
 defined( 'WPINC' ) || die;
 
@@ -310,10 +310,11 @@ final class Sessions_Command {
 	 *
 	 * `WP_Session_Tokens` can only destroy a session given the *raw*
 	 * verifier, which is never stored — the meta row is keyed by its
-	 * hash. So single-session destroys write the meta row directly,
-	 * which limits them to the default storage backend.
+	 * hash. So single-session destroys go through {@see Session_Store},
+	 * which writes the meta row and so needs the default storage backend.
 	 *
 	 * @since 3.1.0
+	 * @since 3.4.0 Goes through Session_Store.
 	 *
 	 * @param WP_User               $user       Target user.
 	 * @param string                $token      Token hash from `sessions list`.
@@ -328,9 +329,7 @@ final class Sessions_Command {
 			);
 		}
 
-		$sessions = get_user_meta( (int) $user->ID, self::META_KEY, true );
-
-		if ( ! is_array( $sessions ) || ! isset( $sessions[ $token ] ) ) {
+		if ( ! in_array( $token, Session_Store::instance()->verifiers( (int) $user->ID ), true ) ) {
 			WP_CLI::error(
 				sprintf(
 					/* translators: 1: token hash, 2: user login. */
@@ -350,8 +349,7 @@ final class Sessions_Command {
 			$assoc_args
 		);
 
-		unset( $sessions[ $token ] );
-		update_user_meta( (int) $user->ID, self::META_KEY, $sessions );
+		Session_Store::instance()->destroy( (int) $user->ID, array( $token ) );
 
 		/**
 		 * Fires after a single session is destroyed from the CLI.
@@ -460,20 +458,15 @@ final class Sessions_Command {
 	/**
 	 * Is this user's session storage the default usermeta one?
 	 *
-	 * Asks `WP_Session_Tokens` for the resolved manager instead of
-	 * re-running the `session_token_manager` filter ourselves — the
-	 * filter receives the user id, so a site could legitimately return
-	 * a different backend per user, and only the resolved instance
-	 * reflects that.
-	 *
 	 * @since 3.1.0
+	 * @since 3.4.0 Asks Session_Store.
 	 *
 	 * @param int $user_id User id.
 	 *
 	 * @return bool
 	 */
 	private function is_default_storage( int $user_id ): bool {
-		return WP_Session_Tokens::get_instance( $user_id ) instanceof WP_User_Meta_Session_Tokens;
+		return Session_Store::instance()->is_default_storage( $user_id );
 	}
 
 	/**

@@ -17,12 +17,12 @@ import { __, sprintf } from '@wordpress/i18n';
  */
 import {
 	AddonCard,
+	AddonCardSkeleton,
 	Button,
 	Icon,
 	Modal,
 	Notice,
 	SectionHead,
-	Spinner,
 	StoreButton,
 	TextField,
 } from '../ui';
@@ -242,8 +242,13 @@ export function AddonsPage() {
 				}
 			/>
 			{ isLoading && (
-				<div className="loggedin-loading">
-					<Spinner />
+				<div className="loggedin-addons" aria-busy="true">
+					<p className="screen-reader-text" role="status">
+						{ __( 'Loading add-ons…', 'loggedin' ) }
+					</p>
+					{ [ 1, 2, 3, 4 ].map( ( n ) => (
+						<AddonCardSkeleton key={ n } />
+					) ) }
 				</div>
 			) }
 			{ ! isLoading && ! items.length && (

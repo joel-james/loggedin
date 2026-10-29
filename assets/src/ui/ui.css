@@ -12,9 +12,14 @@
 
 /* stylelint-disable no-descending-specificity -- Icons and help lines take their colour and spacing from the part they sit in (nav item, notice, card footer); those parts never nest, so the order of these rules never decides a conflict. */
 
-/* Modals render outside the screen's root, so they carry the tokens too. */
+/*
+ * Modals render outside the screen's root, so they carry the tokens too.
+ * Modals opened by components that take no class (DataViews' action
+ * modals in add-ons) get them from the screen's body class.
+ */
 .loggedin-admin,
-.loggedin-modal {
+.loggedin-modal,
+.users_page_loggedin .components-modal__frame {
 	--loggedin-theme: var(--wp-admin-theme-color, #3858e9);
 	--loggedin-theme-hover: var(--wp-admin-theme-color-darker-10, #2145e6);
 	--loggedin-on-theme: #fff;
@@ -519,6 +524,16 @@ html {
 	color: var(--loggedin-fg-subtle);
 }
 
+/*
+ * Select and other InputControl fields put their label in a flex column,
+ * whose gap (8px on recent WordPress, none on older) adds to the label's
+ * margin. Use the margin alone, so a select's input lines up with a
+ * number field's beside it.
+ */
+.loggedin-admin .components-input-base {
+	gap: 0;
+}
+
 /* Invalid fields: our aria-invalid, not a core class, picks the input. */
 .loggedin-admin .loggedin-field--invalid [aria-invalid="true"] {
 	border-color: var(--loggedin-danger);
@@ -1010,6 +1025,57 @@ html {
 	color: var(--loggedin-fg-muted);
 }
 
+/* AddonCardSkeleton: grey bars in the card's rows while the list loads. */
+.loggedin-skeleton {
+	display: block;
+	border-radius: var(--loggedin-radius-control);
+	background: var(--loggedin-surface-weak);
+	animation: loggedin-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+.loggedin-addon__icon.loggedin-skeleton {
+	border-radius: var(--loggedin-radius-surface);
+}
+
+.loggedin-skeleton--title {
+	width: 45%;
+	height: 16px;
+}
+
+.loggedin-skeleton--line {
+	width: 100%;
+	height: 12px;
+	margin-block: 4px 8px;
+}
+
+.loggedin-skeleton--short {
+	width: 70%;
+}
+
+.loggedin-skeleton--status {
+	width: 96px;
+	height: 12px;
+}
+
+.loggedin-skeleton--button {
+	width: 104px;
+	height: 32px;
+}
+
+@keyframes loggedin-skeleton-pulse {
+
+	50% {
+		opacity: 0.5;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.loggedin-skeleton {
+		animation: none;
+	}
+}
+
 .loggedin-loading {
 	display: flex;
 	justify-content: center;
@@ -1092,6 +1158,88 @@ html {
 	width: 100%;
 }
 
+/* TableCard: a table edge to edge under the title row. */
+.loggedin-table-card {
+	padding: 0;
+	overflow: hidden;
+}
+
+.loggedin-table-card > .loggedin-card__head {
+	padding: var(--loggedin-space-5) var(--loggedin-space-6);
+}
+
+.loggedin-table-card__body {
+	border-top: 1px solid var(--loggedin-stroke-card);
+}
+
+/* DataViews inside a TableCard, in the kit's type and colours. */
+.loggedin-admin .loggedin-table-card .dataviews-wrapper {
+	background: var(--loggedin-surface);
+}
+
+.loggedin-admin .loggedin-table-card .dataviews__view-actions {
+	padding: 12px var(--loggedin-space-6);
+}
+
+.loggedin-admin .loggedin-table-card .dataviews-view-table th {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: var(--loggedin-fg-muted);
+	background: var(--loggedin-surface-sunken);
+}
+
+.loggedin-admin .loggedin-table-card .dataviews-view-table tr td:first-child,
+.loggedin-admin .loggedin-table-card .dataviews-view-table tr th:first-child {
+	padding-inline-start: var(--loggedin-space-6);
+}
+
+.loggedin-admin .loggedin-table-card .dataviews-view-table tr td:last-child,
+.loggedin-admin .loggedin-table-card .dataviews-view-table tr th:last-child {
+	padding-inline-end: var(--loggedin-space-6);
+}
+
+.loggedin-admin .loggedin-table-card .dataviews-view-table tbody tr:hover {
+	background: var(--loggedin-surface-sunken);
+}
+
+.loggedin-admin .loggedin-table-card .dataviews-footer {
+	padding: 12px var(--loggedin-space-6);
+	border-top: 1px solid var(--loggedin-stroke-weak);
+	background: var(--loggedin-surface);
+}
+
+/* A plain table in a TableCard. */
+.loggedin-admin .loggedin-table-card__body > table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.loggedin-admin .loggedin-table-card__body > table th,
+.loggedin-admin .loggedin-table-card__body > table td {
+	padding: 12px var(--loggedin-space-4);
+	border-bottom: 1px solid var(--loggedin-stroke-weak);
+	text-align: start;
+}
+
+.loggedin-admin .loggedin-table-card__body > table th:first-child,
+.loggedin-admin .loggedin-table-card__body > table td:first-child {
+	padding-inline-start: var(--loggedin-space-6);
+}
+
+.loggedin-admin .loggedin-table-card__body > table th {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: var(--loggedin-fg-muted);
+	background: var(--loggedin-surface-sunken);
+}
+
+.loggedin-admin .loggedin-table-card__body > table tr:last-child td {
+	border-bottom: 0;
+}
+
 /* Role rows: a role, its value and Remove, one row per role (Auto logout). */
 .loggedin-role-rows {
 	display: flex;
@@ -1110,17 +1258,7 @@ html {
 	margin: 0;
 }
 
-/* Only the first row shows the column labels; screen readers still hear every one. */
-.loggedin-admin .loggedin-role-row:not(:first-child) :is(.components-base-control__label, .components-input-control__label) {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
-}
-
-/* Lines Remove up with the field, under the first row's labels. */
+/* Lines Remove up with the inputs (40px) it sits beside; the first row's are under labels (24px). */
 .loggedin-admin .loggedin-role-row__remove {
 	margin-top: 4px;
 }

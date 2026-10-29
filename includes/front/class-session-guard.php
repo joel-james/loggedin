@@ -14,8 +14,17 @@
  *     session) or `logout_oldest` (destroy only the single oldest
  *     session).
  *
- * Both hooks consult {@see Setup\Settings} for the current limit and
- * mode, and both honour the `loggedin_bypass` filter so an addon can
+ * A third point covers logins that never pass through `authenticate`:
+ *
+ *   - `attach_session_information` (as a session is created): social
+ *     login, magic link and popup login plugins call
+ *     `wp_set_auth_cookie()` directly, so neither check above runs.
+ *     Logout Oldest and Logout All are enforced here too. Block New
+ *     can't refuse a login at this point, so those logins aren't
+ *     limited under Block New.
+ *
+ * All three consult {@see Setup\Settings} for the current limit and
+ * mode, and all honour the `loggedin_bypass` filter so an addon can
  * exempt a specific user or role without forking this class.
  *
  * @package FoxeLabs\Loggedin\Front
@@ -55,6 +64,27 @@ final class Session_Guard {
 	protected function init(): void {
 		add_filter( 'wp_authenticate_user', array( $this, 'validate_block_logic' ), 10, 2 );
 		add_filter( 'check_password', array( $this, 'validate_allow_logic' ), 10, 4 );
+		add_filter( 'attach_session_information', array( $this, 'enforce_on_create' ), 10, 2 );
+	}
+
+	/**
+	 * Make room as a session is created, for logins that skip `authenticate`.
+	 *
+	 * Runs for every new session. A login through the login form
+	 * already made room in {@see self::validate_allow_logic()}, so the
+	 * user is normally under the limit by now and nothing more ends.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param array $session Session data being stored. Returned unchanged.
+	 * @param int   $user_id User the session belongs to.
+	 *
+	 * @return array
+	 */
+	public function enforce_on_create( $session, $user_id ): array {
+		$this->make_room( (int) $user_id );
+
+		return (array) $session;
 	}
 
 	/**
@@ -83,20 +113,43 @@ final class Session_Guard {
 			return false;
 		}
 
+		$this->make_room( (int) $user_id );
+
+		return true;
+	}
+
+	/**
+	 * Under Logout All or Logout Oldest, end sessions to fit the new one.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param int $user_id User about to get a new session.
+	 *
+	 * @return void
+	 */
+	protected function make_room( int $user_id ): void {
 		$logic = (string) Settings::instance()->get( 'logic', 'allow' );
 
 		if (
-			in_array( $logic, array( 'allow', 'logout_oldest' ), true ) &&
-			$this->has_limit_reached( (int) $user_id )
+			! in_array( $logic, array( 'allow', 'logout_oldest' ), true ) ||
+			! $this->has_limit_reached( $user_id )
 		) {
-			if ( 'allow' === $logic ) {
-				$this->destroy_all_sessions( (int) $user_id );
-			} else {
-				$this->destroy_oldest_session( (int) $user_id );
-			}
+			return;
 		}
 
-		return true;
+		if ( 'allow' === $logic ) {
+			$this->destroy_all_sessions( $user_id );
+
+			return;
+		}
+
+		// One at a time until there's room: the limit may have been
+		// lowered since these sessions began. Stops when nothing more
+		// can be ended, so a filter that always reports the limit as
+		// reached can't loop forever.
+		do {
+			$ended = $this->destroy_oldest_session( $user_id );
+		} while ( $ended && $this->has_limit_reached( $user_id ) );
 	}
 
 	/**
@@ -163,6 +216,8 @@ final class Session_Guard {
 	 * @return void
 	 */
 	protected function destroy_all_sessions( int $user_id ): void {
+		Displaced::instance()->record( $user_id, Session_Store::instance()->verifiers( $user_id ) );
+
 		WP_Session_Tokens::get_instance( $user_id )->destroy_all();
 
 		/**
@@ -178,49 +233,43 @@ final class Session_Guard {
 	/**
 	 * Destroy only the oldest active session for the user.
 	 *
-	 * Reads the raw `session_tokens` user meta directly because the
-	 * `WP_Session_Tokens` API doesn't expose a "drop the oldest"
-	 * primitive. This is documented as user-meta-storage only —
-	 * sites using a custom storage backend (e.g. Redis) should
-	 * configure the `allow` mode instead.
+	 * The `WP_Session_Tokens` API has no "drop the oldest" primitive,
+	 * so this goes through {@see Session_Store}, which needs WordPress's
+	 * default session storage (user meta). Sites using a custom backend
+	 * (e.g. Redis) should configure the `allow` mode instead.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Goes through Session_Store, skips expired sessions and
+	 *              reports whether one ended.
 	 *
 	 * @param int $user_id User id.
 	 *
-	 * @return void
+	 * @return bool Whether a session ended.
 	 */
-	protected function destroy_oldest_session( int $user_id ): void {
-		$sessions = get_user_meta( $user_id, 'session_tokens', true );
+	protected function destroy_oldest_session( int $user_id ): bool {
+		$store  = Session_Store::instance();
+		$oldest = $store->oldest( $user_id );
 
-		if ( ! is_array( $sessions ) || empty( $sessions ) ) {
-			return;
+		if ( '' === $oldest ) {
+			return false;
 		}
 
-		$oldest_token = '';
-		$oldest_time  = PHP_INT_MAX;
+		Displaced::instance()->record( $user_id, array( $oldest ) );
 
-		foreach ( $sessions as $token => $session ) {
-			$login = isset( $session['login'] ) ? (int) $session['login'] : PHP_INT_MAX;
-			if ( $login <= $oldest_time ) {
-				$oldest_time  = $login;
-				$oldest_token = $token;
-			}
+		if ( ! $store->destroy( $user_id, array( $oldest ) ) ) {
+			return false;
 		}
 
-		if ( '' !== $oldest_token ) {
-			unset( $sessions[ $oldest_token ] );
-			update_user_meta( $user_id, 'session_tokens', $sessions );
+		/**
+		 * Fires after the oldest session is destroyed for a user.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param int $user_id User id whose oldest session was cleared.
+		 */
+		do_action( 'loggedin_destroy_oldest_session', $user_id );
 
-			/**
-			 * Fires after the oldest session is destroyed for a user.
-			 *
-			 * @since 2.0.0
-			 *
-			 * @param int $user_id User id whose oldest session was cleared.
-			 */
-			do_action( 'loggedin_destroy_oldest_session', $user_id );
-		}
+		return true;
 	}
 
 	/**
@@ -295,15 +344,20 @@ final class Session_Guard {
 	/**
 	 * Error shown to users blocked by the `block` mode.
 	 *
+	 * The message set on the Lockout & recovery page, else the default.
+	 * The `loggedin_error_message` filter has the last word.
+	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Uses the `message` setting.
 	 *
 	 * @return string
 	 */
 	protected function limit_error_message(): string {
-		$message = __(
-			"You've reached the maximum number of active logins for this account. Please log out from another device to continue.",
-			'loggedin'
-		);
+		$message = (string) Settings::instance()->get( 'message', '' );
+
+		if ( '' === trim( $message ) ) {
+			$message = self::default_message();
+		}
 
 		/**
 		 * Filter the login-blocked error message.
@@ -313,5 +367,19 @@ final class Session_Guard {
 		 * @param string $message The message shown on wp-login.
 		 */
 		return (string) apply_filters( 'loggedin_error_message', $message );
+	}
+
+	/**
+	 * The built-in blocked-login message.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return string
+	 */
+	public static function default_message(): string {
+		return __(
+			"You've reached the maximum number of active logins for this account. Please log out from another device to continue.",
+			'loggedin'
+		);
 	}
 }

@@ -19,8 +19,9 @@
  */
 import { applyFilters } from '@wordpress/hooks';
 import { __ } from '@wordpress/i18n';
-import { SchemaCard } from './schema';
+import { errorKey, SchemaCard } from './schema';
 import { LoginLimitsPage } from '../pages/login-limits';
+import { LockoutPage } from '../pages/lockout';
 import { AutoLogoutPage } from '../pages/auto-logout';
 import { SessionsPage } from '../pages/sessions';
 import { AddonsPage } from '../pages/addons';
@@ -51,6 +52,15 @@ const corePages = () => [
 		render: LoginLimitsPage,
 		saves: true,
 		keys: [ 'loggedin_settings.maximum' ],
+	},
+	{
+		id: 'lockout',
+		group: 'settings',
+		title: __( 'Lockout & recovery', 'loggedin' ),
+		icon: 'lockout',
+		render: LockoutPage,
+		saves: true,
+		keys: [ 'loggedin_settings.displaced_redirect' ],
 	},
 	{
 		id: 'auto-logout',
@@ -107,7 +117,8 @@ const LEGACY_TAB_PAGES = {
  * @return {Object} Entry to use.
  */
 const settleLegacyTab = ( tab ) =>
-	'active-sessions' === tab.key
+	// 1.2.0 and later say where they go, with `group`.
+	'active-sessions' === tab.key && ! tab.group
 		? {
 				...tab,
 				label: __( 'Active sessions', 'loggedin' ),
@@ -143,10 +154,11 @@ const place = ( list, page ) => {
  * app mounts on DOM ready), and resolving once keeps every Component
  * reference stable, so panels never remount and drop focus while typing.
  *
- * @param {Object} schema `loggedin_settings_schema`: { pages, cards, fields }.
+ * @param {Object} schema  `loggedin_settings_schema`: { pages, cards, fields }.
+ * @param {Object} [roles] Every role: { slug: name }, for role tables.
  * @return {Array} Pages with `panels`: [{ id, Component, legacy }].
  */
-export function resolvePages( schema ) {
+export function resolvePages( schema, roles = {} ) {
 	const list = corePages();
 	const groupIds = groups().map( ( group ) => group.id );
 	const fields = schema.fields || [];
@@ -212,19 +224,16 @@ export function resolvePages( schema ) {
 				keys: fields
 					.filter(
 						( field ) =>
-							field.card === card.id && 'number' === field.type
+							field.card === card.id &&
+							[ 'number', 'role-table' ].includes( field.type )
 					)
-					.map(
-						( field ) =>
-							`${ field.option || 'loggedin_settings' }.${
-								field.key
-							}`
-					),
+					.map( errorKey ),
 				Component: ( { errors } ) => (
 					<SchemaCard
 						card={ card }
 						fields={ fields }
 						errors={ errors }
+						roles={ roles }
 					/>
 				),
 			} )
