@@ -132,11 +132,16 @@ final class Logout_Epoch {
 		 * Fires after a session is invalidated by the logout epoch.
 		 *
 		 * @since 3.3.0
+		 * @since 3.4.0 Passes the verifier instead of the raw cookie token.
 		 *
 		 * @param int    $user_id User id whose session was invalidated.
-		 * @param string $token   Hashed token of the destroyed session.
+		 * @param string $token   Hashed token (verifier) of the destroyed session.
 		 */
-		do_action( 'loggedin_session_invalidated', (int) $user_id, $token );
+		do_action(
+			'loggedin_session_invalidated',
+			(int) $user_id,
+			Session_Store::instance()->verifier( $token )
+		);
 
 		return false;
 	}

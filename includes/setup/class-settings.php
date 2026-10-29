@@ -44,12 +44,12 @@ final class Settings {
 	/**
 	 * Modes the session guard knows how to enforce.
 	 *
-	 * Kept here so both the schema and the sanitizer derive from a
-	 * single list.
+	 * Always allowed. Add-ons can add more through `loggedin_logics`,
+	 * see {@see self::logics()}.
 	 *
 	 * @since 3.0.0
 	 */
-	private const ALLOWED_LOGICS = array( 'allow', 'logout_oldest', 'block' );
+	private const BUILT_IN_LOGICS = array( 'allow', 'logout_oldest', 'block' );
 
 	/**
 	 * Memoized result of {@see self::all()} for this request.
@@ -69,6 +69,15 @@ final class Settings {
 	 * @var array<string, mixed>|null
 	 */
 	private $cache = null;
+
+	/**
+	 * Memoized result of {@see self::logics()} for this request.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var array<string, array{label: string, desc: string}>|null
+	 */
+	private $logics = null;
 
 	/**
 	 * Register hooks.
@@ -98,6 +107,13 @@ final class Settings {
 		// finishes rather than serving defaults an add-on has since
 		// changed.
 		add_action( 'loggedin_init', array( $this, 'flush' ) );
+
+		// A stored mode whose add-on is gone reads as the default, so
+		// the limit keeps working and the REST schema still accepts
+		// the stored value. The catalogue is translated, so this only
+		// runs from `init`, and anything cached earlier is dropped.
+		add_filter( "option_{$option}", array( $this, 'normalize_logic' ) );
+		add_action( 'init', array( $this, 'flush' ), 0 );
 	}
 
 	/**
@@ -112,7 +128,100 @@ final class Settings {
 	 * @return void
 	 */
 	public function flush(): void {
-		$this->cache = null;
+		$this->cache  = null;
+		$this->logics = null;
+	}
+
+	/**
+	 * The login modes, built in and added, for the Login limits tiles.
+	 *
+	 * Call it from `init` on: the labels are translated.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return array<string, array{label: string, desc: string}>
+	 */
+	public function logics(): array {
+		if ( null !== $this->logics ) {
+			return $this->logics;
+		}
+
+		$logics = array(
+			'logout_oldest' => array(
+				'label' => __( 'Logout Oldest', 'loggedin' ),
+				'desc'  => __( 'The new login ends the oldest session. Needs WordPress’s default session storage (user meta).', 'loggedin' ),
+			),
+			'allow'         => array(
+				'label' => __( 'Logout All', 'loggedin' ),
+				'desc'  => __( 'The new login ends every other session.', 'loggedin' ),
+			),
+			'block'         => array(
+				'label' => __( 'Block New', 'loggedin' ),
+				'desc'  => __( 'The new login is refused until an older session ends or expires.', 'loggedin' ),
+			),
+		);
+
+		/**
+		 * Filter the list of available login logics.
+		 *
+		 * A mode added here can be chosen and saved. Loggedin enforces
+		 * only its own three modes, so the add-on that adds one does
+		 * the enforcing itself. If the add-on goes, a stored mode of
+		 * its own reads as the default.
+		 *
+		 * @since 2.0.0
+		 * @since 3.4.0 Added modes can be saved.
+		 *
+		 * @param array $logics Logics keyed by mode id.
+		 */
+		$logics = (array) apply_filters( 'loggedin_logics', $logics );
+
+		$this->logics = array();
+		foreach ( $logics as $key => $meta ) {
+			$this->logics[ (string) $key ] = array(
+				'label' => (string) ( $meta['label'] ?? $key ),
+				'desc'  => (string) ( $meta['desc'] ?? '' ),
+			);
+		}
+
+		return $this->logics;
+	}
+
+	/**
+	 * Ids of the modes that can be stored.
+	 *
+	 * The built-in modes stay allowed even if a filter removes their
+	 * tiles, so an existing setting is never rejected.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return array<int, string>
+	 */
+	public function logic_ids(): array {
+		return array_values(
+			array_unique( array_merge( self::BUILT_IN_LOGICS, array_keys( $this->logics() ) ) )
+		);
+	}
+
+	/**
+	 * Read a stored mode that is no longer registered as the default.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param mixed $value Stored option value.
+	 *
+	 * @return mixed
+	 */
+	public function normalize_logic( $value ) {
+		if ( ! did_action( 'init' ) || ! is_array( $value ) || ! isset( $value['logic'] ) ) {
+			return $value;
+		}
+
+		if ( ! in_array( (string) $value['logic'], $this->logic_ids(), true ) ) {
+			$value['logic'] = $this->defaults()['logic'];
+		}
+
+		return $value;
 	}
 
 	/**
@@ -246,7 +355,7 @@ final class Settings {
 							),
 							'logic'              => array(
 								'type' => 'string',
-								'enum' => self::ALLOWED_LOGICS,
+								'enum' => $this->logic_ids(),
 							),
 							'unlock'             => array(
 								'type' => 'boolean',
@@ -300,7 +409,7 @@ final class Settings {
 
 		if ( isset( $input['logic'] ) ) {
 			$logic        = (string) $input['logic'];
-			$out['logic'] = in_array( $logic, self::ALLOWED_LOGICS, true )
+			$out['logic'] = in_array( $logic, $this->logic_ids(), true )
 				? $logic
 				: $defaults['logic'];
 		}

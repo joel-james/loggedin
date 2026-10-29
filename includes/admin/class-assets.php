@@ -22,6 +22,7 @@ use FoxeLabs\Loggedin\Auto_Logout\Settings as Auto_Logout_Settings;
 use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Front\Session_Guard;
 use FoxeLabs\Loggedin\Plugin;
+use FoxeLabs\Loggedin\Setup\Settings;
 
 defined( 'WPINC' ) || die;
 
@@ -256,43 +257,12 @@ final class Assets {
 	 * code used, so addons that extend the list continue to work.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Built by {@see Settings::logics()}, which also decides what can be saved.
 	 *
 	 * @return array<string, array{label: string, desc: string}>
 	 */
 	private function logics_payload(): array {
-		$logics = array(
-			'logout_oldest' => array(
-				'label' => __( 'Logout Oldest', 'loggedin' ),
-				'desc'  => __( 'The new login ends the oldest session. Needs WordPress’s default session storage (user meta).', 'loggedin' ),
-			),
-			'allow'         => array(
-				'label' => __( 'Logout All', 'loggedin' ),
-				'desc'  => __( 'The new login ends every other session.', 'loggedin' ),
-			),
-			'block'         => array(
-				'label' => __( 'Block New', 'loggedin' ),
-				'desc'  => __( 'The new login is refused until an older session ends or expires.', 'loggedin' ),
-			),
-		);
-
-		/**
-		 * Filter the list of available login logics.
-		 *
-		 * @since 2.0.0
-		 *
-		 * @param array $logics Logics keyed by mode id.
-		 */
-		$logics = (array) apply_filters( 'loggedin_logics', $logics );
-
-		$payload = array();
-		foreach ( $logics as $key => $meta ) {
-			$payload[ (string) $key ] = array(
-				'label' => (string) ( $meta['label'] ?? $key ),
-				'desc'  => (string) ( $meta['desc'] ?? '' ),
-			);
-		}
-
-		return $payload;
+		return Settings::instance()->logics();
 	}
 
 	/**

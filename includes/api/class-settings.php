@@ -77,7 +77,7 @@ final class Settings extends Endpoint {
 						),
 						'logic'   => array(
 							'type' => 'string',
-							'enum' => array( 'allow', 'logout_oldest', 'block' ),
+							'enum' => Settings_Store::instance()->logic_ids(),
 						),
 					),
 				),

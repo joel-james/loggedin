@@ -250,9 +250,12 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * Improve: Add-ons built for the old screen keep working, and links from before 3.4.0 still open the right page.
 * Improve: `wp loggedin settings set` accepts true/false, yes/no, on/off or 1/0 for on/off settings.
 * Improve: Keyboard and screen reader fixes on the settings screen and the profile's sign-out buttons.
+* Improve: Login modes added by other plugins through `loggedin_logics` can be saved.
+* Fix: The old force-logout link now also checks that the user can manage options.
 * Fix: Logout Oldest skips sessions that already expired, and ends as many as needed when the limit was lowered.
 * Changed: Requires WordPress 6.5.
 * Changed: Force Logout moved to Manage › Sessions, and Support is now Help.
+* Changed: `loggedin_session_invalidated` passes the hashed session token instead of the raw one.
 * Changed: Sites updating from an earlier version keep self-unlock and the administrator exemption off until turned on.
 
 = 3.3.1 =

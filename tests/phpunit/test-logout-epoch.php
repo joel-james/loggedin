@@ -124,21 +124,27 @@ class Loggedin_Logout_Epoch_Test extends WP_UnitTestCase {
 	}
 
 	public function test_session_invalidated_action_fires(): void {
-		$this->create_session( time() - DAY_IN_SECONDS );
+		$token = $this->create_session( time() - DAY_IN_SECONDS );
 
 		update_option( Logout_Epoch::OPTION, time(), true );
 
 		$captured = null;
+		$verifier = null;
 		add_action(
 			'loggedin_session_invalidated',
-			static function ( int $user_id ) use ( &$captured ): void {
+			static function ( int $user_id, string $hash ) use ( &$captured, &$verifier ): void {
 				$captured = $user_id;
-			}
+				$verifier = $hash;
+			},
+			10,
+			2
 		);
 
 		Logout_Epoch::instance()->invalidate_stale_session( $this->user_id );
 
 		$this->assertSame( $this->user_id, $captured );
+		// The verifier, never the raw cookie token.
+		$this->assertSame( hash( 'sha256', $token ), $verifier );
 	}
 
 	public function test_request_without_session_token_passes_through(): void {

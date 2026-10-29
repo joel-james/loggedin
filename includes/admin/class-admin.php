@@ -67,11 +67,12 @@ final class Admin {
 	 * Linked to from outside the React app (e.g. a user-row action on
 	 * the core Users list table contributed by an addon). Looks for
 	 * `?loggedin_logout=1&loggedin_user=<id>&_wpnonce=...`, verifies
-	 * the nonce, destroys every session for the target user, and
-	 * surfaces a `settings_errors`-based admin notice with the
-	 * result.
+	 * the nonce and the same capability as the Sessions page, destroys
+	 * every session for the target user, and surfaces a
+	 * `settings_errors`-based admin notice with the result.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Requires `manage_options` and fires `loggedin_destroy_all_sessions`.
 	 *
 	 * @return void
 	 */
@@ -82,10 +83,21 @@ final class Admin {
 
 		check_admin_referer( 'loggedin-options' );
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die(
+				esc_html__( 'Sorry, you are not allowed to sign users out.', 'loggedin' ),
+				'',
+				array( 'response' => 403 )
+			);
+		}
+
 		$user = get_userdata( (int) $_REQUEST['loggedin_user'] );
 
 		if ( $user ) {
 			WP_Session_Tokens::get_instance( $user->ID )->destroy_all();
+
+			/** This action is documented in includes/api/class-sessions.php */
+			do_action( 'loggedin_destroy_all_sessions', $user->ID );
 
 			add_settings_error(
 				'general',

@@ -22,6 +22,9 @@ class Loggedin_Settings_Test extends WP_UnitTestCase {
 		delete_option( 'loggedin_maximum' );
 		delete_option( 'loggedin_logic' );
 		delete_option( Exempt_Admins_Notice::OPTION );
+		remove_all_filters( 'loggedin_logics' );
+		Settings::instance()->flush();
+		Settings::instance()->register();
 
 		parent::tear_down();
 	}
@@ -228,5 +231,68 @@ class Loggedin_Settings_Test extends WP_UnitTestCase {
 
 		$this->assertFalse( Settings::instance()->get( 'exempt_admins' ) );
 		$this->assertSame( 3, Settings::instance()->get( 'maximum' ) );
+	}
+
+	/**
+	 * Register a `queue` mode the way an add-on would.
+	 */
+	private function add_queue_mode(): void {
+		add_filter(
+			'loggedin_logics',
+			static function ( array $logics ): array {
+				$logics['queue'] = array(
+					'label' => 'Queue',
+					'desc'  => 'Wait for a free slot.',
+				);
+				return $logics;
+			}
+		);
+		Settings::instance()->flush();
+	}
+
+	public function test_a_mode_an_addon_adds_can_be_saved(): void {
+		$this->add_queue_mode();
+
+		Settings::instance()->update( array( 'logic' => 'queue' ) );
+
+		$this->assertSame( 'queue', Settings::instance()->get( 'logic' ) );
+		$this->assertArrayHasKey( 'queue', Settings::instance()->logics() );
+	}
+
+	public function test_a_mode_an_addon_adds_saves_over_rest(): void {
+		$this->add_queue_mode();
+		Settings::instance()->register();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/settings' );
+		$request->set_body_params(
+			array(
+				Plugin::OPTION_KEY => array_merge( Settings::instance()->all(), array( 'logic' => 'queue' ) ),
+			)
+		);
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'queue', Settings::instance()->get( 'logic' ) );
+	}
+
+	public function test_a_stored_mode_whose_addon_is_gone_reads_as_the_default(): void {
+		$this->add_queue_mode();
+		Settings::instance()->update( array( 'logic' => 'queue' ) );
+
+		remove_all_filters( 'loggedin_logics' );
+		Settings::instance()->flush();
+
+		$this->assertSame( 'allow', Settings::instance()->get( 'logic' ) );
+		$this->assertSame( 'allow', get_option( Plugin::OPTION_KEY )['logic'] );
+	}
+
+	public function test_the_built_in_modes_stay_allowed_if_a_filter_drops_them(): void {
+		add_filter( 'loggedin_logics', '__return_empty_array' );
+		Settings::instance()->flush();
+
+		Settings::instance()->update( array( 'logic' => 'block' ) );
+
+		$this->assertSame( 'block', Settings::instance()->get( 'logic' ) );
 	}
 }
