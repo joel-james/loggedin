@@ -15,9 +15,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Admin;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\UserSessions\ProfileSessions;
-use FoxeLabs\Loggedin\Modules\UserSessions\UsersList;
 use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Loggedin\Settings\Settings;
 
@@ -29,8 +26,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class ExemptAdminsNotice {
-
-	use Singleton;
 
 	/**
 	 * Option set by the Upgrader while the notice is due.
@@ -54,13 +49,33 @@ final class ExemptAdminsNotice {
 	private const NONCE = 'loggedin-exempt-admins';
 
 	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Settings store.
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.4.0
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		if ( ! get_option( self::OPTION ) ) {
 			return;
 		}
@@ -83,7 +98,7 @@ final class ExemptAdminsNotice {
 			return false;
 		}
 
-		if ( Settings::instance()->get( 'exempt_admins', false ) ) {
+		if ( $this->settings->get( 'exempt_admins', false ) ) {
 			delete_option( self::OPTION );
 
 			return false;
@@ -107,8 +122,8 @@ final class ExemptAdminsNotice {
 		check_admin_referer( self::NONCE );
 
 		if ( 'on' === sanitize_key( wp_unslash( $_GET[ self::ARG ] ) ) ) {
-			Settings::instance()->update(
-				array_merge( Settings::instance()->all(), array( 'exempt_admins' => true ) )
+			$this->settings->update(
+				array_merge( $this->settings->all(), array( 'exempt_admins' => true ) )
 			);
 		}
 

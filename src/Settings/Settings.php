@@ -27,7 +27,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Settings;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Plugin;
 
 defined( 'WPINC' ) || die;
@@ -38,8 +37,6 @@ defined( 'WPINC' ) || die;
  * @since 3.0.0
  */
 final class Settings {
-
-	use Singleton;
 
 	/**
 	 * Modes the session guard knows how to enforce.
@@ -84,12 +81,12 @@ final class Settings {
 	 *
 	 * @since 3.0.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		// `init` (not `admin_init`) so the option is registered on
 		// every request type — REST included. WordPress reads the
 		// `show_in_rest` schema at REST controller boot, which fires
 		// outside the admin context.
-		add_action( 'init', array( $this, 'register' ) );
+		add_action( 'init', array( $this, 'register_option' ) );
 
 		// Drop the memoized copy whenever the option changes, on
 		// every write path — our own `update()`, the REST route at
@@ -336,7 +333,7 @@ final class Settings {
 	 *
 	 * @return void
 	 */
-	public function register(): void {
+	public function register_option(): void {
 		register_setting(
 			'loggedin',
 			Plugin::OPTION_KEY,

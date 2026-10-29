@@ -15,6 +15,7 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Tests\Modules\AutoLogout;
 
 use FoxeLabs\Loggedin\Modules\AutoLogout\Settings;
+use FoxeLabs\Loggedin\Plugin;
 use WP_UnitTestCase;
 
 
@@ -33,11 +34,11 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_all_returns_defaults_when_unset(): void {
-		$this->assertSame( Settings::instance()->defaults(), Settings::instance()->all() );
+		$this->assertSame( Plugin::instance()->auto_logout()->settings()->defaults(), Plugin::instance()->auto_logout()->settings()->all() );
 	}
 
 	public function test_defaults_ship_with_idle_logout_off(): void {
-		$defaults = Settings::instance()->defaults();
+		$defaults = Plugin::instance()->auto_logout()->settings()->defaults();
 
 		$this->assertSame( 0, $defaults['idle_timeout'] );
 		$this->assertSame( 0, $defaults['session_lifetime'] );
@@ -47,7 +48,7 @@ class SettingsTest extends WP_UnitTestCase {
 	public function test_all_merges_partial_option_over_defaults(): void {
 		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 20 ) );
 
-		$settings = Settings::instance()->all();
+		$settings = Plugin::instance()->auto_logout()->settings()->all();
 
 		$this->assertSame( 20, $settings['idle_timeout'] );
 		$this->assertSame( 60, $settings['warning'] );
@@ -64,7 +65,7 @@ class SettingsTest extends WP_UnitTestCase {
 			)
 		);
 
-		$settings = Settings::instance()->all();
+		$settings = Plugin::instance()->auto_logout()->settings()->all();
 
 		$this->assertSame( Settings::MAX_IDLE_TIMEOUT, $settings['idle_timeout'] );
 		$this->assertSame( 0, $settings['warning'] );
@@ -75,11 +76,11 @@ class SettingsTest extends WP_UnitTestCase {
 	public function test_all_recovers_from_a_clobbered_option(): void {
 		update_option( Settings::OPTION_KEY, 'not an array' );
 
-		$this->assertSame( Settings::instance()->defaults(), Settings::instance()->all() );
+		$this->assertSame( Plugin::instance()->auto_logout()->settings()->defaults(), Plugin::instance()->auto_logout()->settings()->all() );
 	}
 
 	public function test_sanitize_drops_unknown_keys(): void {
-		$clean = Settings::instance()->sanitize(
+		$clean = Plugin::instance()->auto_logout()->settings()->sanitize(
 			array(
 				'idle_timeout' => 30,
 				'evil'         => 'payload',
@@ -91,12 +92,12 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_sanitize_returns_defaults_for_garbage(): void {
-		$this->assertSame( Settings::instance()->defaults(), Settings::instance()->sanitize( 'abc' ) );
-		$this->assertSame( Settings::instance()->defaults(), Settings::instance()->sanitize( null ) );
+		$this->assertSame( Plugin::instance()->auto_logout()->settings()->defaults(), Plugin::instance()->auto_logout()->settings()->sanitize( 'abc' ) );
+		$this->assertSame( Plugin::instance()->auto_logout()->settings()->defaults(), Plugin::instance()->auto_logout()->settings()->sanitize( null ) );
 	}
 
 	public function test_sanitize_roles_drops_unknown_and_zero_entries(): void {
-		$clean = Settings::instance()->sanitize_roles(
+		$clean = Plugin::instance()->auto_logout()->settings()->sanitize_roles(
 			array(
 				'editor'          => 5,
 				'not_a_real_role' => 10,
@@ -108,7 +109,7 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_sanitize_roles_clamps_to_the_maximum(): void {
-		$clean = Settings::instance()->sanitize_roles(
+		$clean = Plugin::instance()->auto_logout()->settings()->sanitize_roles(
 			array( 'editor' => Settings::MAX_IDLE_TIMEOUT + 99 )
 		);
 
@@ -116,13 +117,13 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_sanitize_roles_returns_empty_for_non_array(): void {
-		$this->assertSame( array(), Settings::instance()->sanitize_roles( 'nope' ) );
+		$this->assertSame( array(), Plugin::instance()->auto_logout()->settings()->sanitize_roles( 'nope' ) );
 	}
 
 	public function test_timeout_for_returns_zero_when_disabled(): void {
 		$user = $this->factory->user->create_and_get( array( 'role' => 'editor' ) );
 
-		$this->assertSame( 0, Settings::instance()->timeout_for( $user ) );
+		$this->assertSame( 0, Plugin::instance()->auto_logout()->settings()->timeout_for( $user ) );
 	}
 
 	public function test_timeout_for_uses_the_global_value_in_seconds(): void {
@@ -130,7 +131,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$user = $this->factory->user->create_and_get( array( 'role' => 'editor' ) );
 
-		$this->assertSame( 600, Settings::instance()->timeout_for( $user ) );
+		$this->assertSame( 600, Plugin::instance()->auto_logout()->settings()->timeout_for( $user ) );
 	}
 
 	public function test_role_override_beats_the_global_value(): void {
@@ -139,7 +140,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$user = $this->factory->user->create_and_get( array( 'role' => 'editor' ) );
 
-		$this->assertSame( 300, Settings::instance()->timeout_for( $user ) );
+		$this->assertSame( 300, Plugin::instance()->auto_logout()->settings()->timeout_for( $user ) );
 	}
 
 	public function test_shortest_role_override_wins_for_multi_role_users(): void {
@@ -157,7 +158,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		// Strictest-wins: an idle timeout is a security control, so the
 		// tighter of two applicable rules is the safe resolution.
-		$this->assertSame( 300, Settings::instance()->timeout_for( get_user_by( 'id', $user->ID ) ) );
+		$this->assertSame( 300, Plugin::instance()->auto_logout()->settings()->timeout_for( get_user_by( 'id', $user->ID ) ) );
 	}
 
 	public function test_role_override_is_ignored_when_the_role_has_no_rule(): void {
@@ -166,13 +167,13 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$user = $this->factory->user->create_and_get( array( 'role' => 'editor' ) );
 
-		$this->assertSame( 3600, Settings::instance()->timeout_for( $user ) );
+		$this->assertSame( 3600, Plugin::instance()->auto_logout()->settings()->timeout_for( $user ) );
 	}
 
 	public function test_timeout_for_handles_a_null_user(): void {
 		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 10 ) );
 
-		$this->assertSame( 600, Settings::instance()->timeout_for( null ) );
+		$this->assertSame( 600, Plugin::instance()->auto_logout()->settings()->timeout_for( null ) );
 	}
 
 	public function test_filter_can_exempt_a_user(): void {
@@ -182,19 +183,19 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$user = $this->factory->user->create_and_get( array( 'role' => 'editor' ) );
 
-		$this->assertSame( 0, Settings::instance()->timeout_for( $user ) );
+		$this->assertSame( 0, Plugin::instance()->auto_logout()->settings()->timeout_for( $user ) );
 	}
 
 	public function test_register_hooks_init(): void {
-		Settings::instance();
+		Plugin::instance()->auto_logout()->settings();
 
 		$this->assertNotFalse(
-			has_action( 'init', array( Settings::instance(), 'register_settings' ) )
+			has_action( 'init', array( Plugin::instance()->auto_logout()->settings(), 'register_settings' ) )
 		);
 	}
 
 	public function test_register_settings_registers_both_options(): void {
-		Settings::instance()->register_settings();
+		Plugin::instance()->auto_logout()->settings()->register_settings();
 
 		$registered = get_registered_settings();
 

@@ -9,7 +9,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Tests\Addons;
 
-use FoxeLabs\Loggedin\Addons\OutdatedAddons;
+use FoxeLabs\Loggedin\Plugin;
 use WP_UnitTestCase;
 
 
@@ -67,7 +67,7 @@ class OutdatedAddonsTest extends WP_UnitTestCase {
 	public function test_an_add_on_older_than_the_screen_is_listed(): void {
 		$this->addon( 'loggedin-active-sessions', '1.1.0' );
 
-		$outdated = OutdatedAddons::instance()->outdated();
+		$outdated = Plugin::instance()->outdated_addons()->outdated();
 
 		$this->assertCount( 1, $outdated );
 		$this->assertSame( '1.1.0', $outdated[0]['version'] );
@@ -77,12 +77,12 @@ class OutdatedAddonsTest extends WP_UnitTestCase {
 	public function test_an_updated_add_on_is_not_listed(): void {
 		$this->addon( 'loggedin-limit-per-role', '2.2.0' );
 
-		$this->assertSame( array(), OutdatedAddons::instance()->outdated() );
+		$this->assertSame( array(), Plugin::instance()->outdated_addons()->outdated() );
 	}
 
 	public function test_an_add_on_without_settings_on_the_screen_is_not_listed(): void {
 		$this->addon( 'loggedin-limit-per-user', '2.0.0' );
 
-		$this->assertSame( array(), OutdatedAddons::instance()->outdated() );
+		$this->assertSame( array(), Plugin::instance()->outdated_addons()->outdated() );
 	}
 }

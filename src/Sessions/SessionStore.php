@@ -25,10 +25,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Sessions;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\Lockout\Displaced;
-use FoxeLabs\Loggedin\Modules\Lockout\Unlock;
-use FoxeLabs\Loggedin\Modules\PasswordSignout\PasswordSignout;
 use WP_Session_Tokens;
 use WP_User_Meta_Session_Tokens;
 
@@ -41,23 +37,12 @@ defined( 'WPINC' ) || die;
  */
 final class SessionStore {
 
-	use Singleton;
-
 	/**
 	 * User meta WordPress keeps sessions in.
 	 *
 	 * @since 3.4.0
 	 */
 	private const META_KEY = 'session_tokens';
-
-	/**
-	 * Nothing to hook: callers ask for what they need.
-	 *
-	 * @since 3.4.0
-	 *
-	 * @return void
-	 */
-	protected function init(): void {}
 
 	/**
 	 * Whether this user's sessions live in WordPress's default storage.
@@ -85,7 +70,7 @@ final class SessionStore {
 	 *
 	 * @param int $user_id User id.
 	 *
-	 * @return array<string, array> Sessions: `login`, `expiration`, `ip`, `ua`.
+	 * @return array<string, array<string, mixed>> Sessions: `login`, `expiration`, `ip`, `ua`.
 	 */
 	public function all( int $user_id ): array {
 		if ( $user_id <= 0 || ! $this->is_default_storage( $user_id ) ) {

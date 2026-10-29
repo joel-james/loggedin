@@ -15,7 +15,6 @@ namespace FoxeLabs\Loggedin\Tests\Modules\Lockout;
 
 use FoxeLabs\Loggedin\Modules\Lockout\Unlock;
 use FoxeLabs\Loggedin\Plugin;
-use FoxeLabs\Loggedin\Sessions\SessionGuard;
 use FoxeLabs\Loggedin\Tests\Support\RedirectException;
 use WP_Session_Tokens;
 use WP_UnitTestCase;
@@ -35,7 +34,7 @@ class UnlockTest extends WP_UnitTestCase {
 
 		// Seed sessions past the limit: new sessions are limited as they're
 		// created, and these tests drive the limit by hand.
-		remove_filter( 'attach_session_information', array( SessionGuard::instance(), 'enforce_on_create' ) );
+		remove_filter( 'attach_session_information', array( Plugin::instance()->session_guard(), 'enforce_on_create' ) );
 
 		$manager = WP_Session_Tokens::get_instance( $this->user_id );
 		$manager->create( time() + HOUR_IN_SECONDS );
@@ -70,7 +69,7 @@ class UnlockTest extends WP_UnitTestCase {
 	 * @return string Key.
 	 */
 	private function offered_key(): string {
-		$html = Unlock::instance()->offer( get_user_by( 'id', $this->user_id ) );
+		$html = Plugin::instance()->lockout()->unlock()->offer( get_user_by( 'id', $this->user_id ) );
 
 		preg_match( '/loggedin_key=([A-Za-z0-9]+)/', $html, $match );
 
@@ -90,7 +89,7 @@ class UnlockTest extends WP_UnitTestCase {
 		$_GET['loggedin_key'] = $key;
 
 		try {
-			Unlock::instance()->$method();
+			Plugin::instance()->lockout()->unlock()->$method();
 		} catch ( RedirectException $redirect ) {
 			parse_str( (string) wp_parse_url( $redirect->getMessage(), PHP_URL_QUERY ), $args );
 
@@ -103,21 +102,21 @@ class UnlockTest extends WP_UnitTestCase {
 	public function test_offer_is_empty_when_unlock_is_off(): void {
 		update_option( Plugin::OPTION_KEY, array( 'unlock' => false ) );
 
-		$this->assertSame( '', Unlock::instance()->offer( get_user_by( 'id', $this->user_id ) ) );
+		$this->assertSame( '', Plugin::instance()->lockout()->unlock()->offer( get_user_by( 'id', $this->user_id ) ) );
 	}
 
 	public function test_a_key_works_once(): void {
 		$key = $this->offered_key();
 
-		$this->assertTrue( Unlock::instance()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
-		$this->assertFalse( Unlock::instance()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
+		$this->assertTrue( Plugin::instance()->lockout()->unlock()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
+		$this->assertFalse( Plugin::instance()->lockout()->unlock()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
 	}
 
 	public function test_a_wrong_key_leaves_the_real_one_working(): void {
 		$key = $this->offered_key();
 
-		$this->assertFalse( Unlock::instance()->redeem( $this->user_id, Unlock::REQUEST_META, 'guess' ) );
-		$this->assertTrue( Unlock::instance()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
+		$this->assertFalse( Plugin::instance()->lockout()->unlock()->redeem( $this->user_id, Unlock::REQUEST_META, 'guess' ) );
+		$this->assertTrue( Plugin::instance()->lockout()->unlock()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
 	}
 
 	public function test_an_expired_key_fails(): void {
@@ -127,14 +126,14 @@ class UnlockTest extends WP_UnitTestCase {
 		$stored['expires'] = time() - 1;
 		update_user_meta( $this->user_id, Unlock::REQUEST_META, $stored );
 
-		$this->assertFalse( Unlock::instance()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
+		$this->assertFalse( Plugin::instance()->lockout()->unlock()->redeem( $this->user_id, Unlock::REQUEST_META, $key ) );
 	}
 
 	public function test_a_key_belongs_to_its_user(): void {
 		$key   = $this->offered_key();
 		$other = self::factory()->user->create();
 
-		$this->assertFalse( Unlock::instance()->redeem( $other, Unlock::REQUEST_META, $key ) );
+		$this->assertFalse( Plugin::instance()->lockout()->unlock()->redeem( $other, Unlock::REQUEST_META, $key ) );
 	}
 
 	public function test_the_request_emails_a_link_once_per_five_minutes(): void {
@@ -167,12 +166,12 @@ class UnlockTest extends WP_UnitTestCase {
 	}
 
 	public function test_login_message_matches_the_state(): void {
-		$this->assertSame( 'base', Unlock::instance()->login_message( 'base' ) );
+		$this->assertSame( 'base', Plugin::instance()->lockout()->unlock()->login_message( 'base' ) );
 
 		$_GET['loggedin_unlock'] = 'done';
-		$this->assertStringContainsString( 'signed out of your other devices', Unlock::instance()->login_message( 'base' ) );
+		$this->assertStringContainsString( 'signed out of your other devices', Plugin::instance()->lockout()->unlock()->login_message( 'base' ) );
 
 		$_GET['loggedin_unlock'] = 'made-up';
-		$this->assertSame( 'base', Unlock::instance()->login_message( 'base' ) );
+		$this->assertSame( 'base', Plugin::instance()->lockout()->unlock()->login_message( 'base' ) );
 	}
 }

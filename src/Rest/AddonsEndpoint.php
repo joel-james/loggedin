@@ -26,7 +26,6 @@ namespace FoxeLabs\Loggedin\Rest;
 
 use FoxeLabs\Loggedin\Addons\Addons;
 use FoxeLabs\Loggedin\Addons\Catalog;
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -41,14 +40,43 @@ defined( 'WPINC' ) || die;
  */
 final class AddonsEndpoint extends Endpoint {
 
-	use Singleton;
+	/**
+	 * Add-ons registry.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Addons
+	 */
+	private Addons $addons;
+
+	/**
+	 * Add-ons catalogue.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Catalog
+	 */
+	private Catalog $catalog;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Addons  $addons  Add-ons registry.
+	 * @param Catalog $catalog Add-ons catalogue.
+	 */
+	public function __construct( Addons $addons, Catalog $catalog ) {
+		$this->addons  = $addons;
+		$this->catalog = $catalog;
+	}
 
 	/**
 	 * Register hooks.
 	 *
 	 * @since 3.0.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		$this->hook();
 	}
 
@@ -124,7 +152,7 @@ final class AddonsEndpoint extends Endpoint {
 		unset( $request );
 
 		return new WP_REST_Response(
-			array( 'items' => Catalog::instance()->items( false ) ),
+			array( 'items' => $this->catalog->items( false ) ),
 			200
 		);
 	}
@@ -146,7 +174,7 @@ final class AddonsEndpoint extends Endpoint {
 		unset( $request );
 
 		return new WP_REST_Response(
-			array( 'items' => Catalog::instance()->items( true ) ),
+			array( 'items' => $this->catalog->items( true ) ),
 			200
 		);
 	}
@@ -166,7 +194,7 @@ final class AddonsEndpoint extends Endpoint {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function activate_license( WP_REST_Request $request ) {
-		$addons = Addons::instance();
+		$addons = $this->addons;
 
 		if ( ! $addons->is_ready() ) {
 			return new WP_Error(
@@ -194,7 +222,7 @@ final class AddonsEndpoint extends Endpoint {
 		return new WP_REST_Response(
 			array(
 				'success' => true,
-				'addon'   => Catalog::instance()->find( $id ),
+				'addon'   => $this->catalog->find( $id ),
 			),
 			200
 		);
@@ -210,7 +238,7 @@ final class AddonsEndpoint extends Endpoint {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function deactivate_license( WP_REST_Request $request ) {
-		$addons = Addons::instance();
+		$addons = $this->addons;
 
 		if ( ! $addons->is_ready() ) {
 			return new WP_Error(
@@ -231,7 +259,7 @@ final class AddonsEndpoint extends Endpoint {
 		return new WP_REST_Response(
 			array(
 				'success' => true,
-				'addon'   => Catalog::instance()->find( $id ),
+				'addon'   => $this->catalog->find( $id ),
 			),
 			200
 		);

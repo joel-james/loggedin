@@ -9,7 +9,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Tests\Admin;
 
-use FoxeLabs\Loggedin\Admin\Admin;
+use FoxeLabs\Loggedin\Plugin;
 use WP_Session_Tokens;
 use WP_UnitTestCase;
 use WPDieException;
@@ -40,7 +40,7 @@ class AdminTest extends WP_UnitTestCase {
 		$_REQUEST['loggedin_user']   = (string) $this->user_id;
 		$_REQUEST['_wpnonce']        = wp_create_nonce( 'loggedin-options' );
 
-		Admin::instance()->force_logout();
+		Plugin::instance()->admin()->force_logout();
 	}
 
 	public function test_an_admin_signs_the_user_out(): void {

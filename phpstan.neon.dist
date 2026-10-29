@@ -1,0 +1,11 @@
+parameters:
+    level: 6
+    paths:
+        - loggedin.php
+        - uninstall.php
+        - src
+    bootstrapFiles:
+        - tests/phpstan/bootstrap.php
+    scanFiles:
+        - tests/phpstan/wp-cli-stubs.php
+    treatPhpDocTypesAsCertain: false

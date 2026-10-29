@@ -26,11 +26,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\Lockout;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\PasswordSignout\PasswordSignout;
-use FoxeLabs\Loggedin\Sessions\LastLogin;
-use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
-use FoxeLabs\Loggedin\Sessions\SessionGuard;
 use FoxeLabs\Loggedin\Sessions\SessionStore;
 use FoxeLabs\Loggedin\Settings\Settings;
 
@@ -42,8 +37,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class Displaced {
-
-	use Singleton;
 
 	/**
 	 * User meta: verifiers of sessions ended by a newer login, with when.
@@ -83,17 +76,49 @@ final class Displaced {
 	private const MARKER_TTL = 10 * MINUTE_IN_SECONDS;
 
 	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings     $settings Settings store.
+	 * @param SessionStore $store    Session store.
+	 */
+	public function __construct( Settings $settings, SessionStore $store ) {
+		$this->settings = $settings;
+		$this->store    = $store;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.4.0
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'auth_cookie_bad_session_token', array( $this, 'detect' ) );
 		add_action( 'init', array( $this, 'check_early' ), 1 );
 		add_filter( 'login_message', array( $this, 'login_message' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_redirect' ) );
+		add_action( 'loggedin_sessions_displacing', array( $this, 'record' ), 10, 2 );
 	}
 
 	/**
@@ -150,7 +175,7 @@ final class Displaced {
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param array $cookie Cookie elements, among them `username` and `token`.
+	 * @param array<string, mixed> $cookie Cookie elements, among them `username` and `token`.
 	 *
 	 * @return void
 	 */
@@ -166,7 +191,7 @@ final class Displaced {
 		}
 
 		$noted    = $this->noted( (int) $user->ID );
-		$verifier = SessionStore::instance()->verifier( (string) $cookie['token'] );
+		$verifier = $this->store->verifier( (string) $cookie['token'] );
 
 		if ( ! isset( $noted[ $verifier ] ) ) {
 			return;
@@ -224,7 +249,7 @@ final class Displaced {
 	 * @return void
 	 */
 	public function maybe_redirect(): void {
-		$url = (string) Settings::instance()->get( 'displaced_redirect', '' );
+		$url = (string) $this->settings->get( 'displaced_redirect', '' );
 
 		if ( '' === $url || ! $this->is_marked() || is_user_logged_in() ) {
 			return;

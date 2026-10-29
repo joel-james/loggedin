@@ -20,7 +20,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\AutoLogout;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use WP_User;
 
 defined( 'WPINC' ) || die;
@@ -31,8 +30,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class Settings {
-
-	use Singleton;
 
 	/**
 	 * Option holding the scalar settings.
@@ -98,7 +95,7 @@ final class Settings {
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'init', array( $this, 'register_settings' ) );
 	}
 

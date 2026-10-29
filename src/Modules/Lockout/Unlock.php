@@ -24,12 +24,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\Lockout;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\PasswordSignout\PasswordSignout;
-use FoxeLabs\Loggedin\Sessions\LastLogin;
-use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
 use FoxeLabs\Loggedin\Sessions\SessionGuard;
-use FoxeLabs\Loggedin\Sessions\SessionStore;
 use FoxeLabs\Loggedin\Settings\Settings;
 use WP_Session_Tokens;
 use WP_User;
@@ -42,8 +37,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class Unlock {
-
-	use Singleton;
 
 	/**
 	 * User meta holding the hashed key from the login error's link.
@@ -88,17 +81,59 @@ final class Unlock {
 	private const STATE_ARG = 'loggedin_unlock';
 
 	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Settings store.
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.4.0
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'login_form_loggedin_unlock_request', array( $this, 'handle_request' ) );
 		add_action( 'login_form_loggedin_unlock', array( $this, 'handle_unlock' ) );
 
 		add_filter( 'login_message', array( $this, 'login_message' ) );
+
+		// Late, so a site's own message filter runs first and the link
+		// still follows whatever message it sets.
+		add_filter( 'loggedin_error_message', array( $this, 'append_offer' ), 100, 2 );
+	}
+
+	/**
+	 * Add the self-unlock link to the "limit reached" error.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string       $message Error message. HTML.
+	 * @param WP_User|null $user    User whose login was refused.
+	 *
+	 * @return string
+	 */
+	public function append_offer( $message, $user = null ): string {
+		if ( ! $user instanceof WP_User ) {
+			return (string) $message;
+		}
+
+		return (string) $message . $this->offer( $user );
 	}
 
 	/**
@@ -111,7 +146,7 @@ final class Unlock {
 	 * @return string HTML.
 	 */
 	public function offer( WP_User $user ): string {
-		if ( ! Settings::instance()->get( 'unlock', false ) || ! is_email( $user->user_email ) ) {
+		if ( ! $this->settings->get( 'unlock', false ) || ! is_email( $user->user_email ) ) {
 			return '';
 		}
 
@@ -130,7 +165,7 @@ final class Unlock {
 	public function handle_request(): void {
 		[ $user_id, $key ] = $this->read_link();
 
-		if ( ! Settings::instance()->get( 'unlock', false ) || ! $this->redeem( $user_id, self::REQUEST_META, $key ) ) {
+		if ( ! $this->settings->get( 'unlock', false ) || ! $this->redeem( $user_id, self::REQUEST_META, $key ) ) {
 			$this->finish( 'invalid' );
 		}
 
@@ -169,7 +204,7 @@ final class Unlock {
 	public function handle_unlock(): void {
 		[ $user_id, $key ] = $this->read_link();
 
-		if ( ! Settings::instance()->get( 'unlock', false ) || ! $this->redeem( $user_id, self::UNLOCK_META, $key ) ) {
+		if ( ! $this->settings->get( 'unlock', false ) || ! $this->redeem( $user_id, self::UNLOCK_META, $key ) ) {
 			$this->finish( 'invalid' );
 		}
 

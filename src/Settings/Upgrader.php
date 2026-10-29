@@ -22,7 +22,6 @@ namespace FoxeLabs\Loggedin\Settings;
 
 use FoxeLabs\Freemius\Storage\ActivationRepository;
 use FoxeLabs\Loggedin\Admin\ExemptAdminsNotice;
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Plugin;
 
 defined( 'WPINC' ) || die;
@@ -34,21 +33,24 @@ defined( 'WPINC' ) || die;
  */
 final class Upgrader {
 
-	use Singleton;
+	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
 
 	/**
-	 * Register hooks.
+	 * Set up the dependencies.
 	 *
-	 * Core boots us from inside its own `plugins_loaded` callback, so
-	 * any `add_action( 'plugins_loaded', ... )` here would register too
-	 * late to ever fire. Run the upgrade inline instead — Settings is
-	 * already constructed by the time Core reaches us, and downstream
-	 * modules instantiated after this line see the migrated schema.
+	 * @since 3.4.0
 	 *
-	 * @since 3.0.0
+	 * @param Settings $settings Settings store.
 	 */
-	protected function init(): void {
-		$this->maybe_upgrade();
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
 	}
 
 	/**
@@ -171,8 +173,8 @@ final class Upgrader {
 	 * The stored shape (activations keyed by Freemius plugin id) did
 	 * not change, so a straight copy is enough.
 	 *
-	 * Ordering matters: `Core::common()` boots us before
-	 * `Core::addons()`, and `Addons` defers `Freemius::get_instance()`
+	 * Ordering matters: `Plugin::boot()` runs us before it wires the
+	 * add-ons, and `Addons` defers `Freemius::get_instance()`
 	 * until `admin_init` or the first read, so this always lands
 	 * before anything reads an activation.
 	 *
@@ -246,7 +248,7 @@ final class Upgrader {
 			return;
 		}
 
-		$settings = Settings::instance()->defaults();
+		$settings = $this->settings->defaults();
 
 		if ( null !== $legacy_max ) {
 			$settings['maximum'] = max( 1, (int) $legacy_max );
@@ -283,7 +285,7 @@ final class Upgrader {
 		$stored = is_array( $stored ) ? $stored : array();
 
 		$settings = array_merge(
-			Settings::instance()->defaults(),
+			$this->settings->defaults(),
 			array(
 				'unlock'        => false,
 				'exempt_admins' => false,

@@ -3,13 +3,13 @@
  * Plugin entry file.
  *
  * Defines the path / file constants, loads the Composer autoloader,
- * loads the text domain, and hands off to {@see Core::instance()} to
- * boot every module in phased order.
+ * and hands off to {@see Plugin::boot()}, which builds and wires every
+ * service.
  *
  * This file is intentionally minimal — the rule of thumb is "no
  * runtime logic in the bootstrap." Each subsystem (settings storage,
  * session guard, admin UI, REST API, Freemius) lives behind its own
- * class under `includes/` and registers its own hooks from there.
+ * class under `src/`, built and wired by `Plugin`.
  *
  * @package           FoxeLabs\Loggedin
  * @author            Joel James
@@ -65,8 +65,8 @@ if ( ! function_exists( __NAMESPACE__ . '\\init' ) ) {
 	 * first init call. The function:
 	 *
 	 *   1. Pulls in the Composer autoloader.
-	 *   2. Hands off to {@see Core::instance()}, which is responsible
-	 *      for wiring every module in order.
+	 *   2. Hands off to {@see Plugin::boot()}, which builds and wires
+	 *      every service.
 	 *
 	 * The text domain is not loaded here: since WordPress 4.6 core
 	 * loads translations for a wordpress.org-hosted plugin on first
@@ -81,7 +81,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\init' ) ) {
 
 		alias_legacy_classes();
 
-		Core::instance();
+		Plugin::instance()->boot();
 	}
 }
 

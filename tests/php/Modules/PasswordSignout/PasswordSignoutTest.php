@@ -10,7 +10,6 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Tests\Modules\PasswordSignout;
 
 use FoxeLabs\Loggedin\Plugin;
-use FoxeLabs\Loggedin\Sessions\SessionGuard;
 use WP_Session_Tokens;
 use WP_UnitTestCase;
 
@@ -29,7 +28,7 @@ class PasswordSignoutTest extends WP_UnitTestCase {
 
 		// Seed sessions past the limit: new sessions are limited as they're
 		// created, and these tests drive the limit by hand.
-		remove_filter( 'attach_session_information', array( SessionGuard::instance(), 'enforce_on_create' ) );
+		remove_filter( 'attach_session_information', array( Plugin::instance()->session_guard(), 'enforce_on_create' ) );
 
 		$manager = WP_Session_Tokens::get_instance( $this->user_id );
 		$manager->create( time() + HOUR_IN_SECONDS );

@@ -18,6 +18,7 @@ namespace FoxeLabs\Loggedin\Tests\Cli;
 use FoxeLabs\Loggedin\Cli\Commands;
 use FoxeLabs\Loggedin\Cli\SessionsCommand;
 use FoxeLabs\Loggedin\Cli\SettingsCommand;
+use FoxeLabs\Loggedin\Plugin;
 use WP_UnitTestCase;
 
 
@@ -38,7 +39,7 @@ class CommandsTest extends WP_UnitTestCase {
 		// No exception, no fatal — the `class_exists` guard in
 		// `Commands::init()` is the only thing standing between a web
 		// request and a call to an undefined class.
-		$this->assertInstanceOf( Commands::class, Commands::instance() );
+		$this->assertInstanceOf( Commands::class, Plugin::instance()->commands() );
 	}
 
 	public function test_command_classes_are_autoloadable(): void {

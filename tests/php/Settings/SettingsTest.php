@@ -11,8 +11,6 @@ namespace FoxeLabs\Loggedin\Tests\Settings;
 
 use FoxeLabs\Loggedin\Admin\ExemptAdminsNotice;
 use FoxeLabs\Loggedin\Plugin;
-use FoxeLabs\Loggedin\Settings\Settings;
-use FoxeLabs\Loggedin\Settings\Upgrader;
 use WP_REST_Request;
 use WP_UnitTestCase;
 
@@ -28,33 +26,33 @@ class SettingsTest extends WP_UnitTestCase {
 		delete_option( 'loggedin_logic' );
 		delete_option( ExemptAdminsNotice::OPTION );
 		remove_all_filters( 'loggedin_logics' );
-		Settings::instance()->flush();
-		Settings::instance()->register();
+		Plugin::instance()->settings()->flush();
+		Plugin::instance()->settings()->register_option();
 
 		parent::tear_down();
 	}
 
 	public function test_defaults_have_expected_keys(): void {
-		$defaults = Settings::instance()->defaults();
+		$defaults = Plugin::instance()->settings()->defaults();
 
 		$this->assertSame( 1, $defaults['maximum'] );
 		$this->assertSame( 'allow', $defaults['logic'] );
 	}
 
 	public function test_update_and_get_round_trip(): void {
-		Settings::instance()->update(
+		Plugin::instance()->settings()->update(
 			array(
 				'maximum' => 5,
 				'logic'   => 'block',
 			)
 		);
 
-		$this->assertSame( 5, Settings::instance()->get( 'maximum' ) );
-		$this->assertSame( 'block', Settings::instance()->get( 'logic' ) );
+		$this->assertSame( 5, Plugin::instance()->settings()->get( 'maximum' ) );
+		$this->assertSame( 'block', Plugin::instance()->settings()->get( 'logic' ) );
 	}
 
 	public function test_sanitize_rejects_invalid_logic(): void {
-		$result = Settings::instance()->sanitize(
+		$result = Plugin::instance()->settings()->sanitize(
 			array(
 				'maximum' => 0,
 				'logic'   => 'nonsense',
@@ -68,14 +66,14 @@ class SettingsTest extends WP_UnitTestCase {
 	public function test_all_merges_partial_stored_with_defaults(): void {
 		update_option( Plugin::OPTION_KEY, array( 'maximum' => 3 ) );
 
-		$all = Settings::instance()->all();
+		$all = Plugin::instance()->settings()->all();
 
 		$this->assertSame( 3, $all['maximum'] );
 		$this->assertSame( 'allow', $all['logic'] );
 	}
 
 	public function test_all_is_memoized_within_a_request(): void {
-		$settings = Settings::instance();
+		$settings = Plugin::instance()->settings();
 		$settings->flush();
 
 		$calls    = 0;
@@ -99,7 +97,7 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_writing_the_option_invalidates_the_cache(): void {
-		$settings = Settings::instance();
+		$settings = Plugin::instance()->settings();
 
 		update_option( Plugin::OPTION_KEY, array( 'maximum' => 2 ) );
 		$this->assertSame( 2, $settings->get( 'maximum' ) );
@@ -120,7 +118,7 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_new_switches_default_to_on(): void {
-		$defaults = Settings::instance()->defaults();
+		$defaults = Plugin::instance()->settings()->defaults();
 
 		$this->assertTrue( $defaults['unlock'] );
 		$this->assertTrue( $defaults['exempt_admins'] );
@@ -128,7 +126,7 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_sanitize_casts_switches_to_booleans(): void {
-		$result = Settings::instance()->sanitize(
+		$result = Plugin::instance()->settings()->sanitize(
 			array(
 				'unlock'        => 0,
 				'exempt_admins' => '1',
@@ -156,7 +154,7 @@ class SettingsTest extends WP_UnitTestCase {
 		update_option( Plugin::VERSION_KEY, '3.2.0' );
 		$this->store_old_option( array( 'maximum' => 2 ) );
 
-		Upgrader::instance()->maybe_upgrade();
+		Plugin::instance()->upgrader()->maybe_upgrade();
 
 		$stored = get_option( Plugin::OPTION_KEY );
 		$this->assertFalse( $stored['unlock'] );
@@ -169,7 +167,7 @@ class SettingsTest extends WP_UnitTestCase {
 		update_option( Plugin::VERSION_KEY, '3.2.0' );
 		$this->store_old_option( array( 'unlock' => true ) );
 
-		Upgrader::instance()->maybe_upgrade();
+		Plugin::instance()->upgrader()->maybe_upgrade();
 
 		$this->assertTrue( get_option( Plugin::OPTION_KEY )['unlock'] );
 	}
@@ -178,26 +176,26 @@ class SettingsTest extends WP_UnitTestCase {
 		delete_option( Plugin::VERSION_KEY );
 		delete_option( Plugin::OPTION_KEY );
 
-		Upgrader::instance()->maybe_upgrade();
+		Plugin::instance()->upgrader()->maybe_upgrade();
 
-		$this->assertTrue( Settings::instance()->get( 'unlock' ) );
-		$this->assertTrue( Settings::instance()->get( 'exempt_admins' ) );
+		$this->assertTrue( Plugin::instance()->settings()->get( 'unlock' ) );
+		$this->assertTrue( Plugin::instance()->settings()->get( 'exempt_admins' ) );
 	}
 
 	public function test_an_upgrade_that_keeps_limiting_admins_suggests_the_exemption(): void {
 		update_option( Plugin::VERSION_KEY, '3.2.0' );
 		$this->store_old_option( array( 'maximum' => 2 ) );
 
-		Upgrader::instance()->maybe_upgrade();
+		Plugin::instance()->upgrader()->maybe_upgrade();
 
-		$this->assertTrue( ExemptAdminsNotice::instance()->is_due() );
+		$this->assertTrue( Plugin::instance()->exempt_admins_notice()->is_due() );
 	}
 
 	public function test_the_suggestion_goes_once_admins_are_exempt(): void {
 		update_option( ExemptAdminsNotice::OPTION, 1 );
-		Settings::instance()->update( array( 'exempt_admins' => true ) );
+		Plugin::instance()->settings()->update( array( 'exempt_admins' => true ) );
 
-		$this->assertFalse( ExemptAdminsNotice::instance()->is_due() );
+		$this->assertFalse( Plugin::instance()->exempt_admins_notice()->is_due() );
 		$this->assertFalse( get_option( ExemptAdminsNotice::OPTION ) );
 	}
 
@@ -205,13 +203,13 @@ class SettingsTest extends WP_UnitTestCase {
 		delete_option( Plugin::VERSION_KEY );
 		delete_option( Plugin::OPTION_KEY );
 
-		Upgrader::instance()->maybe_upgrade();
+		Plugin::instance()->upgrader()->maybe_upgrade();
 
-		$this->assertFalse( ExemptAdminsNotice::instance()->is_due() );
+		$this->assertFalse( Plugin::instance()->exempt_admins_notice()->is_due() );
 	}
 
 	public function test_the_message_keeps_a_link_and_drops_scripts(): void {
-		$out = Settings::instance()->sanitize(
+		$out = Plugin::instance()->settings()->sanitize(
 			array( 'message' => ' Too many devices. <a href="https://example.org/help">Help</a><script>x()</script> ' )
 		);
 
@@ -219,23 +217,23 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	public function test_the_redirect_must_be_a_web_address(): void {
-		$this->assertSame( 'https://example.org/account', Settings::instance()->sanitize( array( 'displaced_redirect' => ' https://example.org/account ' ) )['displaced_redirect'] );
-		$this->assertSame( '', Settings::instance()->sanitize( array( 'displaced_redirect' => 'javascript:alert(1)' ) )['displaced_redirect'] );
+		$this->assertSame( 'https://example.org/account', Plugin::instance()->settings()->sanitize( array( 'displaced_redirect' => ' https://example.org/account ' ) )['displaced_redirect'] );
+		$this->assertSame( '', Plugin::instance()->settings()->sanitize( array( 'displaced_redirect' => 'javascript:alert(1)' ) )['displaced_redirect'] );
 	}
 
 	public function test_the_redirect_must_stay_on_this_site(): void {
-		$this->assertSame( '', Settings::instance()->sanitize( array( 'displaced_redirect' => 'https://elsewhere.test/page' ) )['displaced_redirect'] );
+		$this->assertSame( '', Plugin::instance()->settings()->sanitize( array( 'displaced_redirect' => 'https://elsewhere.test/page' ) )['displaced_redirect'] );
 	}
 
 	public function test_a_partial_update_keeps_the_other_settings(): void {
 		update_option( Plugin::VERSION_KEY, '3.2.0' );
 		$this->store_old_option( array( 'maximum' => 2 ) );
-		Upgrader::instance()->maybe_upgrade();
+		Plugin::instance()->upgrader()->maybe_upgrade();
 
-		Settings::instance()->update( array( 'maximum' => 3 ) );
+		Plugin::instance()->settings()->update( array( 'maximum' => 3 ) );
 
-		$this->assertFalse( Settings::instance()->get( 'exempt_admins' ) );
-		$this->assertSame( 3, Settings::instance()->get( 'maximum' ) );
+		$this->assertFalse( Plugin::instance()->settings()->get( 'exempt_admins' ) );
+		$this->assertSame( 3, Plugin::instance()->settings()->get( 'maximum' ) );
 	}
 
 	/**
@@ -252,52 +250,52 @@ class SettingsTest extends WP_UnitTestCase {
 				return $logics;
 			}
 		);
-		Settings::instance()->flush();
+		Plugin::instance()->settings()->flush();
 	}
 
 	public function test_a_mode_an_addon_adds_can_be_saved(): void {
 		$this->add_queue_mode();
 
-		Settings::instance()->update( array( 'logic' => 'queue' ) );
+		Plugin::instance()->settings()->update( array( 'logic' => 'queue' ) );
 
-		$this->assertSame( 'queue', Settings::instance()->get( 'logic' ) );
-		$this->assertArrayHasKey( 'queue', Settings::instance()->logics() );
+		$this->assertSame( 'queue', Plugin::instance()->settings()->get( 'logic' ) );
+		$this->assertArrayHasKey( 'queue', Plugin::instance()->settings()->logics() );
 	}
 
 	public function test_a_mode_an_addon_adds_saves_over_rest(): void {
 		$this->add_queue_mode();
-		Settings::instance()->register();
+		Plugin::instance()->settings()->register_option();
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 
 		$request = new WP_REST_Request( 'POST', '/wp/v2/settings' );
 		$request->set_body_params(
 			array(
-				Plugin::OPTION_KEY => array_merge( Settings::instance()->all(), array( 'logic' => 'queue' ) ),
+				Plugin::OPTION_KEY => array_merge( Plugin::instance()->settings()->all(), array( 'logic' => 'queue' ) ),
 			)
 		);
 		$response = rest_do_request( $request );
 
 		$this->assertSame( 200, $response->get_status() );
-		$this->assertSame( 'queue', Settings::instance()->get( 'logic' ) );
+		$this->assertSame( 'queue', Plugin::instance()->settings()->get( 'logic' ) );
 	}
 
 	public function test_a_stored_mode_whose_addon_is_gone_reads_as_the_default(): void {
 		$this->add_queue_mode();
-		Settings::instance()->update( array( 'logic' => 'queue' ) );
+		Plugin::instance()->settings()->update( array( 'logic' => 'queue' ) );
 
 		remove_all_filters( 'loggedin_logics' );
-		Settings::instance()->flush();
+		Plugin::instance()->settings()->flush();
 
-		$this->assertSame( 'allow', Settings::instance()->get( 'logic' ) );
+		$this->assertSame( 'allow', Plugin::instance()->settings()->get( 'logic' ) );
 		$this->assertSame( 'allow', get_option( Plugin::OPTION_KEY )['logic'] );
 	}
 
 	public function test_the_built_in_modes_stay_allowed_if_a_filter_drops_them(): void {
 		add_filter( 'loggedin_logics', '__return_empty_array' );
-		Settings::instance()->flush();
+		Plugin::instance()->settings()->flush();
 
-		Settings::instance()->update( array( 'logic' => 'block' ) );
+		Plugin::instance()->settings()->update( array( 'logic' => 'block' ) );
 
-		$this->assertSame( 'block', Settings::instance()->get( 'logic' ) );
+		$this->assertSame( 'block', Plugin::instance()->settings()->get( 'logic' ) );
 	}
 }

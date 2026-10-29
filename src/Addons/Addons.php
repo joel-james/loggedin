@@ -22,7 +22,6 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Addons;
 
 use FoxeLabs\Freemius\Freemius;
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Plugin;
 use WP_Error;
 
@@ -34,8 +33,6 @@ defined( 'WPINC' ) || die;
  * @since 3.0.0
  */
 final class Addons {
-
-	use Singleton;
 
 	/**
 	 * Cache of Freemius SDK instances keyed by plugin / addon id.
@@ -54,7 +51,7 @@ final class Addons {
 	 *
 	 * @since 3.0.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'admin_init', array( $this, 'init_freemius' ) );
 	}
 
@@ -100,7 +97,7 @@ final class Addons {
 	 *
 	 * @param bool $force Force-refresh the cached catalogue.
 	 *
-	 * @return array
+	 * @return array<int, array<string, mixed>>
 	 */
 	public function get_addons( bool $force = false ): array {
 		$this->maybe_init_freemius();
@@ -127,7 +124,7 @@ final class Addons {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @return array<int, array{key: string, status: string, plugin: array}>
+	 * @return array<int, array{key: string, status: string, plugin: array<string, mixed>}>
 	 */
 	public function get_license_items(): array {
 		$this->maybe_init_freemius();
@@ -160,7 +157,7 @@ final class Addons {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @return array<int, array>
+	 * @return array<int, array<string, mixed>>
 	 */
 	public function get_registered_addons_public(): array {
 		return $this->get_registered_addons();
@@ -267,7 +264,7 @@ final class Addons {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @return array<int, array> Addons keyed by Freemius id.
+	 * @return array<int, array<string, mixed>> Addons keyed by Freemius id.
 	 */
 	protected function get_registered_addons(): array {
 		/**

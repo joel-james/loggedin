@@ -19,8 +19,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\AutoLogout;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-
 defined( 'WPINC' ) || die;
 
 /**
@@ -30,7 +28,25 @@ defined( 'WPINC' ) || die;
  */
 final class Lifetime {
 
-	use Singleton;
+	/**
+	 * Auto logout settings.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Auto logout settings.
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
 
 	/**
 	 * Register hooks.
@@ -43,7 +59,7 @@ final class Lifetime {
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_filter( 'auth_cookie_expiration', array( $this, 'expiration' ), 20, 3 );
 	}
 
@@ -62,7 +78,7 @@ final class Lifetime {
 	 * @return int
 	 */
 	public function expiration( $length, $user_id, $remember ): int {
-		$settings = Settings::instance()->all();
+		$settings = $this->settings->all();
 
 		if ( $remember ) {
 			return $settings['remember_lifetime'] > 0

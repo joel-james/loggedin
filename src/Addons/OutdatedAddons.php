@@ -18,8 +18,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Addons;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-
 defined( 'WPINC' ) || die;
 
 /**
@@ -28,8 +26,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class OutdatedAddons {
-
-	use Singleton;
 
 	/**
 	 * First version of each add-on built for the new settings screen.
@@ -43,13 +39,33 @@ final class OutdatedAddons {
 	);
 
 	/**
+	 * Add-ons registry.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Addons
+	 */
+	private Addons $addons;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Addons $addons Add-ons registry.
+	 */
+	public function __construct( Addons $addons ) {
+		$this->addons = $addons;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.4.0
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'admin_notices', array( $this, 'notice' ) );
 	}
 
@@ -75,7 +91,7 @@ final class OutdatedAddons {
 		$minimum  = (array) apply_filters( 'loggedin_addon_minimum_versions', self::MINIMUM );
 		$outdated = array();
 
-		foreach ( Addons::instance()->get_registered_addons_public() as $args ) {
+		foreach ( $this->addons->get_registered_addons_public() as $args ) {
 			$slug = (string) ( $args['slug'] ?? '' );
 			$file = (string) ( $args['main_file'] ?? '' );
 

@@ -13,7 +13,7 @@
  *   - CLI / cURL recipes in our docs.
  *
  * The route mirrors the schema declared in
- * {@see \FoxeLabs\Loggedin\Settings\Settings::register()} so both entry
+ * {@see \FoxeLabs\Loggedin\Settings\Settings::register_option()} so both entry
  * points behave identically.
  *
  * @package FoxeLabs\Loggedin\Rest
@@ -23,7 +23,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Rest;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Settings\Settings;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -38,14 +37,32 @@ defined( 'WPINC' ) || die;
  */
 final class SettingsEndpoint extends Endpoint {
 
-	use Singleton;
+	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Settings store.
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
 
 	/**
 	 * Register hooks.
 	 *
 	 * @since 3.0.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		$this->hook();
 	}
 
@@ -77,7 +94,7 @@ final class SettingsEndpoint extends Endpoint {
 						),
 						'logic'   => array(
 							'type' => 'string',
-							'enum' => Settings::instance()->logic_ids(),
+							'enum' => $this->settings->logic_ids(),
 						),
 					),
 				),
@@ -97,7 +114,7 @@ final class SettingsEndpoint extends Endpoint {
 	public function get_settings( WP_REST_Request $request ): WP_REST_Response {
 		unset( $request );
 
-		return new WP_REST_Response( Settings::instance()->all(), 200 );
+		return new WP_REST_Response( $this->settings->all(), 200 );
 	}
 
 	/**
@@ -118,7 +135,7 @@ final class SettingsEndpoint extends Endpoint {
 	 * @return WP_REST_Response
 	 */
 	public function update_settings( WP_REST_Request $request ): WP_REST_Response {
-		$store   = Settings::instance();
+		$store   = $this->settings;
 		$current = $store->all();
 
 		// Start from what is stored, so keys this route doesn't take

@@ -13,8 +13,8 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Tests\Modules\AutoLogout;
 
-use FoxeLabs\Loggedin\Modules\AutoLogout\Lifetime;
 use FoxeLabs\Loggedin\Modules\AutoLogout\Settings;
+use FoxeLabs\Loggedin\Plugin;
 use WP_UnitTestCase;
 
 
@@ -31,20 +31,20 @@ class LifetimeTest extends WP_UnitTestCase {
 	}
 
 	public function test_unset_lifetimes_pass_the_wordpress_value_through(): void {
-		$this->assertSame( 172800, Lifetime::instance()->expiration( 172800, 1, false ) );
-		$this->assertSame( 1209600, Lifetime::instance()->expiration( 1209600, 1, true ) );
+		$this->assertSame( 172800, Plugin::instance()->auto_logout()->lifetime()->expiration( 172800, 1, false ) );
+		$this->assertSame( 1209600, Plugin::instance()->auto_logout()->lifetime()->expiration( 1209600, 1, true ) );
 	}
 
 	public function test_session_lifetime_is_applied_in_hours(): void {
 		update_option( Settings::OPTION_KEY, array( 'session_lifetime' => 8 ) );
 
-		$this->assertSame( 8 * HOUR_IN_SECONDS, Lifetime::instance()->expiration( 172800, 1, false ) );
+		$this->assertSame( 8 * HOUR_IN_SECONDS, Plugin::instance()->auto_logout()->lifetime()->expiration( 172800, 1, false ) );
 	}
 
 	public function test_remember_lifetime_is_applied_in_days(): void {
 		update_option( Settings::OPTION_KEY, array( 'remember_lifetime' => 3 ) );
 
-		$this->assertSame( 3 * DAY_IN_SECONDS, Lifetime::instance()->expiration( 1209600, 1, true ) );
+		$this->assertSame( 3 * DAY_IN_SECONDS, Plugin::instance()->auto_logout()->lifetime()->expiration( 1209600, 1, true ) );
 	}
 
 	public function test_each_duration_is_independent(): void {
@@ -52,16 +52,16 @@ class LifetimeTest extends WP_UnitTestCase {
 
 		// Remember-me was left at zero, so it keeps the core value even
 		// though the normal duration was overridden.
-		$this->assertSame( 4 * HOUR_IN_SECONDS, Lifetime::instance()->expiration( 172800, 1, false ) );
-		$this->assertSame( 1209600, Lifetime::instance()->expiration( 1209600, 1, true ) );
+		$this->assertSame( 4 * HOUR_IN_SECONDS, Plugin::instance()->auto_logout()->lifetime()->expiration( 172800, 1, false ) );
+		$this->assertSame( 1209600, Plugin::instance()->auto_logout()->lifetime()->expiration( 1209600, 1, true ) );
 	}
 
 	public function test_register_hooks_the_expiration_filter(): void {
-		Lifetime::instance();
+		Plugin::instance()->auto_logout()->lifetime();
 
 		$this->assertSame(
 			20,
-			has_filter( 'auth_cookie_expiration', array( Lifetime::instance(), 'expiration' ) )
+			has_filter( 'auth_cookie_expiration', array( Plugin::instance()->auto_logout()->lifetime(), 'expiration' ) )
 		);
 	}
 
@@ -69,7 +69,7 @@ class LifetimeTest extends WP_UnitTestCase {
 		update_option( Settings::OPTION_KEY, array( 'session_lifetime' => 2 ) );
 
 		add_filter( 'auth_cookie_expiration', static fn() => 99, 10 );
-		Lifetime::instance();
+		Plugin::instance()->auto_logout()->lifetime();
 
 		$this->assertSame(
 			2 * HOUR_IN_SECONDS,

@@ -18,9 +18,8 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Tests\Modules\AutoLogout;
 
-use FoxeLabs\Loggedin\Modules\AutoLogout\IdleGuard;
 use FoxeLabs\Loggedin\Modules\AutoLogout\Settings;
-use FoxeLabs\Loggedin\Sessions\SessionGuard;
+use FoxeLabs\Loggedin\Plugin;
 use WP_Session_Tokens;
 use WP_UnitTestCase;
 
@@ -41,7 +40,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 		parent::set_up();
 
 		// These tests sign one user in on several devices.
-		remove_filter( 'attach_session_information', array( SessionGuard::instance(), 'enforce_on_create' ) );
+		remove_filter( 'attach_session_information', array( Plugin::instance()->session_guard(), 'enforce_on_create' ) );
 	}
 
 	public function tear_down(): void {
@@ -136,24 +135,24 @@ class IdleGuardTest extends WP_UnitTestCase {
 	}
 
 	public function test_register_wires_enforcement_and_assets(): void {
-		IdleGuard::instance();
+		Plugin::instance()->auto_logout()->idle_guard();
 
-		$this->assertSame( 5, has_action( 'init', array( IdleGuard::instance(), 'enforce' ) ) );
+		$this->assertSame( 5, has_action( 'init', array( Plugin::instance()->auto_logout()->idle_guard(), 'enforce' ) ) );
 		$this->assertNotFalse(
-			has_action( 'wp_enqueue_scripts', array( IdleGuard::instance(), 'enqueue' ) )
+			has_action( 'wp_enqueue_scripts', array( Plugin::instance()->auto_logout()->idle_guard(), 'enqueue' ) )
 		);
 		$this->assertNotFalse(
-			has_action( 'admin_enqueue_scripts', array( IdleGuard::instance(), 'enqueue' ) )
+			has_action( 'admin_enqueue_scripts', array( Plugin::instance()->auto_logout()->idle_guard(), 'enqueue' ) )
 		);
 		$this->assertNotFalse(
-			has_filter( 'login_message', array( IdleGuard::instance(), 'login_message' ) )
+			has_filter( 'login_message', array( Plugin::instance()->auto_logout()->idle_guard(), 'login_message' ) )
 		);
 	}
 
 	public function test_enforce_does_nothing_when_idle_logout_is_off(): void {
 		$user_id = $this->sign_in();
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertTrue( is_user_logged_in() );
 		// No stamp is written either — an untracked feature shouldn't
@@ -166,7 +165,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 
 		$user_id = $this->sign_in();
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertGreaterThan( 0, $this->get_last_active( $user_id ) );
 		$this->assertTrue( is_user_logged_in() );
@@ -182,7 +181,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 		$recent = time() - 30;
 		$this->set_last_active( $user_id, $recent );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertSame( $recent, $this->get_last_active( $user_id ) );
 	}
@@ -197,7 +196,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 		$stale = time() - ( 20 * MINUTE_IN_SECONDS );
 		$this->set_last_active( $user_id, $stale );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertGreaterThan( $stale, $this->get_last_active( $user_id ) );
 		$this->assertTrue( is_user_logged_in() );
@@ -218,7 +217,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 			}
 		);
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertSame( 1, $fired );
 		$this->assertFalse( is_user_logged_in() );
@@ -239,7 +238,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 
 		$this->set_last_active( $user_id, time() - ( 16 * MINUTE_IN_SECONDS ) );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertNotNull(
 			WP_Session_Tokens::get_instance( $user_id )->get( $other )
@@ -257,7 +256,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 		// the 5-minute rule for editors.
 		$this->set_last_active( $user_id, time() - ( 10 * MINUTE_IN_SECONDS ) );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertFalse( is_user_logged_in() );
 	}
@@ -268,7 +267,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 		$user_id = $this->sign_in();
 		$before  = get_user_meta( $user_id, 'session_tokens', true );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		// The whole point of the separate meta row: activity writes must
 		// not touch the blob the Active Sessions add-on mutates, or an
@@ -286,7 +285,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 
 		WP_Session_Tokens::get_instance( $user_id )->destroy( $other );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		// A single-process test can't genuinely interleave two requests,
 		// so this doesn't reproduce the race — the real guarantee is the
@@ -310,7 +309,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 		$this->set_last_active( $user_id, time() - ( 60 * MINUTE_IN_SECONDS ), $other );
 		$this->set_last_active( $user_id, time() - ( 10 * MINUTE_IN_SECONDS ) );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertSame( 0, $this->get_last_active( $user_id, $other ) );
 		$this->assertGreaterThan( 0, $this->get_last_active( $user_id ) );
@@ -326,7 +325,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 		$this->set_last_active( $user_id, $recent, $other );
 		$this->set_last_active( $user_id, time() - ( 20 * MINUTE_IN_SECONDS ) );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertSame( $recent, $this->get_last_active( $user_id, $other ) );
 	}
@@ -336,7 +335,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 
 		$user_id = $this->sign_in();
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$map      = get_user_meta( $user_id, Settings::ACTIVITY_META_KEY, true );
 		$verifier = array_key_first( $map );
@@ -356,26 +355,26 @@ class IdleGuardTest extends WP_UnitTestCase {
 
 		wp_set_current_user( 0 );
 
-		IdleGuard::instance()->enforce();
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
 
 		$this->assertFalse( is_user_logged_in() );
 	}
 
 	public function test_login_message_only_appears_with_the_flag(): void {
 		unset( $_GET['loggedin_auto_logout'] );
-		$this->assertSame( 'base', IdleGuard::instance()->login_message( 'base' ) );
+		$this->assertSame( 'base', Plugin::instance()->auto_logout()->idle_guard()->login_message( 'base' ) );
 
 		$_GET['loggedin_auto_logout'] = '1';
 		$this->assertStringContainsString(
 			'inactive',
-			IdleGuard::instance()->login_message( 'base' )
+			Plugin::instance()->auto_logout()->idle_guard()->login_message( 'base' )
 		);
 
 		unset( $_GET['loggedin_auto_logout'] );
 	}
 
 	public function test_rest_error_carries_the_login_url(): void {
-		$error = IdleGuard::instance()->rest_error( null );
+		$error = Plugin::instance()->auto_logout()->idle_guard()->rest_error( null );
 
 		$this->assertSame( 'loggedin_idle_logout', $error->get_error_code() );
 		$this->assertSame( 401, $error->get_error_data()['status'] );

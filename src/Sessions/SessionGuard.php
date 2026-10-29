@@ -34,13 +34,10 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Sessions;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\Lockout\Displaced;
-use FoxeLabs\Loggedin\Modules\Lockout\Unlock;
-use FoxeLabs\Loggedin\Modules\PasswordSignout\PasswordSignout;
 use FoxeLabs\Loggedin\Settings\Settings;
 use WP_Error;
 use WP_Session_Tokens;
+use WP_User;
 
 defined( 'WPINC' ) || die;
 
@@ -51,7 +48,36 @@ defined( 'WPINC' ) || die;
  */
 final class SessionGuard {
 
-	use Singleton;
+	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings     $settings Settings store.
+	 * @param SessionStore $store    Session store.
+	 */
+	public function __construct( Settings $settings, SessionStore $store ) {
+		$this->settings = $settings;
+		$this->store    = $store;
+	}
 
 	/**
 	 * Register hooks.
@@ -64,7 +90,7 @@ final class SessionGuard {
 	 *
 	 * @since 3.0.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_filter( 'wp_authenticate_user', array( $this, 'validate_block_logic' ), 10, 2 );
 		add_filter( 'check_password', array( $this, 'validate_allow_logic' ), 10, 4 );
 		add_filter( 'attach_session_information', array( $this, 'enforce_on_create' ), 10, 2 );
@@ -79,10 +105,10 @@ final class SessionGuard {
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param array $session Session data being stored. Returned unchanged.
-	 * @param int   $user_id User the session belongs to.
+	 * @param array<string, mixed> $session Session data being stored. Returned unchanged.
+	 * @param int                  $user_id User the session belongs to.
 	 *
-	 * @return array
+	 * @return array<string, mixed>
 	 */
 	public function enforce_on_create( $session, $user_id ): array {
 		$this->make_room( (int) $user_id );
@@ -131,7 +157,7 @@ final class SessionGuard {
 	 * @return void
 	 */
 	protected function make_room( int $user_id ): void {
-		$logic = (string) Settings::instance()->get( 'logic', 'allow' );
+		$logic = (string) $this->settings->get( 'logic', 'allow' );
 
 		if (
 			! in_array( $logic, array( 'allow', 'logout_oldest' ), true ) ||
@@ -179,7 +205,7 @@ final class SessionGuard {
 			return $user;
 		}
 
-		$logic = (string) Settings::instance()->get( 'logic', 'allow' );
+		$logic = (string) $this->settings->get( 'logic', 'allow' );
 
 		if ( 'block' !== $logic || ! $this->has_limit_reached( (int) $user->ID ) ) {
 			return $user;
@@ -198,10 +224,7 @@ final class SessionGuard {
 		 */
 		do_action( 'loggedin_login_blocked', $user->ID );
 
-		return new WP_Error(
-			'login_limit_reached',
-			$this->limit_error_message() . Unlock::instance()->offer( $user )
-		);
+		return new WP_Error( 'login_limit_reached', $this->limit_error_message( $user ) );
 	}
 
 	/**
@@ -219,7 +242,7 @@ final class SessionGuard {
 	 * @return void
 	 */
 	protected function destroy_all_sessions( int $user_id ): void {
-		Displaced::instance()->record( $user_id, SessionStore::instance()->verifiers( $user_id ) );
+		$this->displacing( $user_id, $this->store->verifiers( $user_id ) );
 
 		WP_Session_Tokens::get_instance( $user_id )->destroy_all();
 
@@ -250,14 +273,14 @@ final class SessionGuard {
 	 * @return bool Whether a session ended.
 	 */
 	protected function destroy_oldest_session( int $user_id ): bool {
-		$store  = SessionStore::instance();
+		$store  = $this->store;
 		$oldest = $store->oldest( $user_id );
 
 		if ( '' === $oldest ) {
 			return false;
 		}
 
-		Displaced::instance()->record( $user_id, array( $oldest ) );
+		$this->displacing( $user_id, array( $oldest ) );
 
 		if ( ! $store->destroy( $user_id, array( $oldest ) ) ) {
 			return false;
@@ -289,13 +312,15 @@ final class SessionGuard {
 	 * @param int $user_id User id.
 	 *
 	 * @return bool
+	 *
+	 * @phpstan-impure
 	 */
 	protected function has_limit_reached( int $user_id ): bool {
 		if ( empty( $user_id ) || $this->is_bypassed( $user_id ) ) {
 			return false;
 		}
 
-		$maximum = (int) Settings::instance()->get( 'maximum', 1 );
+		$maximum = (int) $this->settings->get( 'maximum', 1 );
 		$count   = count( WP_Session_Tokens::get_instance( $user_id )->get_all() );
 		$reached = $count >= $maximum;
 
@@ -328,7 +353,7 @@ final class SessionGuard {
 	 */
 	protected function is_bypassed( int $user_id ): bool {
 		// "Don't limit administrators": anyone who can manage the site.
-		$bypass = Settings::instance()->get( 'exempt_admins', false )
+		$bypass = $this->settings->get( 'exempt_admins', false )
 			&& user_can( $user_id, 'manage_options' );
 
 		/**
@@ -345,18 +370,53 @@ final class SessionGuard {
 	}
 
 	/**
+	 * Announce sessions a new login is about to end.
+	 *
+	 * Fires before they end, while their verifiers still exist, so a
+	 * listener can remember them. The Lockout module uses it to tell
+	 * those devices why they were signed out.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param int           $user_id   User id.
+	 * @param array<string> $verifiers Verifiers of the sessions about to end.
+	 *
+	 * @return void
+	 */
+	protected function displacing( int $user_id, array $verifiers ): void {
+		if ( empty( $verifiers ) ) {
+			return;
+		}
+
+		/**
+		 * Fires before a new login ends a user's other sessions.
+		 *
+		 * Covers Logout All and Logout Oldest, on the login form and on
+		 * logins that skip it.
+		 *
+		 * @since 3.4.0
+		 *
+		 * @param int           $user_id   User whose sessions are ending.
+		 * @param array<string> $verifiers Verifiers (hashed tokens) of those sessions.
+		 */
+		do_action( 'loggedin_sessions_displacing', $user_id, $verifiers );
+	}
+
+	/**
 	 * Error shown to users blocked by the `block` mode.
 	 *
 	 * The message set on the Lockout & recovery page, else the default.
 	 * The `loggedin_error_message` filter has the last word.
 	 *
 	 * @since 3.0.0
-	 * @since 3.4.0 Uses the `message` setting.
+	 * @since 3.4.0 Uses the `message` setting, and passes the user to the filter.
+	 *
+	 * @param WP_User $user User whose login was refused.
 	 *
 	 * @return string
 	 */
-	protected function limit_error_message(): string {
-		$message = (string) Settings::instance()->get( 'message', '' );
+	protected function limit_error_message( WP_User $user ): string {
+		$message = (string) $this->settings->get( 'message', '' );
 
 		if ( '' === trim( $message ) ) {
 			$message = self::default_message();
@@ -365,11 +425,16 @@ final class SessionGuard {
 		/**
 		 * Filter the login-blocked error message.
 		 *
-		 * @since 1.0.0
+		 * The Lockout module appends its self-unlock link here, at
+		 * priority 100.
 		 *
-		 * @param string $message The message shown on wp-login.
+		 * @since 1.0.0
+		 * @since 3.4.0 Added the `$user` parameter.
+		 *
+		 * @param string   $message The message shown on wp-login. HTML.
+		 * @param WP_User $user    User whose login was refused.
 		 */
-		return (string) apply_filters( 'loggedin_error_message', $message );
+		return (string) apply_filters( 'loggedin_error_message', $message, $user );
 	}
 
 	/**

@@ -19,8 +19,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Addons;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-
 defined( 'WPINC' ) || die;
 
 /**
@@ -30,12 +28,25 @@ defined( 'WPINC' ) || die;
  */
 final class Catalog {
 
-	use Singleton;
+	/**
+	 * Add-ons registry.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Addons
+	 */
+	private Addons $addons;
 
 	/**
-	 * No hooks; service is invoked directly.
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Addons $addons Add-ons registry.
 	 */
-	protected function init(): void {}
+	public function __construct( Addons $addons ) {
+		$this->addons = $addons;
+	}
 
 	/**
 	 * Build the decorated catalogue for the React UI.
@@ -58,11 +69,11 @@ final class Catalog {
 	 *
 	 * @param bool $force Force a Freemius API refresh.
 	 *
-	 * @return array<int, array> Empty array when the SDK isn't ready
+	 * @return array<int, array<string, mixed>> Empty array when the SDK isn't ready
 	 *                           or returns nothing.
 	 */
 	public function items( bool $force = false ): array {
-		$addons     = Addons::instance();
+		$addons     = $this->addons;
 		$catalogue  = $addons->get_addons( $force );
 		$registered = $addons->get_registered_addons_public();
 		$licenses   = $addons->get_license_items();
@@ -114,7 +125,7 @@ final class Catalog {
 	 *
 	 * @param int $id Addon Freemius id.
 	 *
-	 * @return array Empty array when the id isn't in the catalogue.
+	 * @return array<string, mixed> Empty array when the id isn't in the catalogue.
 	 */
 	public function find( int $id ): array {
 		foreach ( $this->items( false ) as $addon ) {
@@ -135,7 +146,7 @@ final class Catalog {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array $license License row from {@see Addons::get_license_items()}.
+	 * @param array<string, mixed> $license License row from {@see Addons::get_license_items()}.
 	 *
 	 * @return bool
 	 */

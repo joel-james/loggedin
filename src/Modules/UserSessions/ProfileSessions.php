@@ -19,10 +19,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\UserSessions;
 
-use FoxeLabs\Loggedin\Admin\Admin;
-use FoxeLabs\Loggedin\Admin\Assets;
-use FoxeLabs\Loggedin\Admin\ExemptAdminsNotice;
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Sessions\SessionStore;
 use WP_Session_Tokens;
 use WP_User;
@@ -35,8 +31,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class ProfileSessions {
-
-	use Singleton;
 
 	/**
 	 * `admin-post.php` action that ends one of the user's sessions.
@@ -53,13 +47,33 @@ final class ProfileSessions {
 	private const DONE_ARG = 'loggedin_session_ended';
 
 	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param SessionStore $store Session store.
+	 */
+	public function __construct( SessionStore $store ) {
+		$this->store = $store;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.4.0
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'show_user_profile', array( $this, 'own' ) );
 		add_action( 'edit_user_profile', array( $this, 'other' ) );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'end_session' ) );
@@ -80,7 +94,7 @@ final class ProfileSessions {
 			return;
 		}
 
-		$store    = SessionStore::instance();
+		$store    = $this->store;
 		$sessions = $store->all( (int) $user->ID );
 		$current  = $store->verifier( wp_get_session_token() );
 
@@ -169,8 +183,8 @@ final class ProfileSessions {
 		$ended = 0;
 
 		// Never this device: signing out here is what Log Out is for.
-		if ( $user_id && '' !== $verifier && SessionStore::instance()->verifier( wp_get_session_token() ) !== $verifier ) {
-			$ended = SessionStore::instance()->destroy( $user_id, array( (string) $verifier ) );
+		if ( $user_id && '' !== $verifier && $this->store->verifier( wp_get_session_token() ) !== $verifier ) {
+			$ended = $this->store->destroy( $user_id, array( (string) $verifier ) );
 		}
 
 		if ( $ended ) {

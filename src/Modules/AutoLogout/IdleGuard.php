@@ -43,7 +43,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\AutoLogout;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Plugin;
 use WP_Error;
 use WP_Session_Tokens;
@@ -57,8 +56,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class IdleGuard {
-
-	use Singleton;
 
 	/**
 	 * Hash algorithm core uses to turn a raw token into a verifier.
@@ -108,6 +105,26 @@ final class IdleGuard {
 	private const MIN_WRITE_INTERVAL = MINUTE_IN_SECONDS;
 
 	/**
+	 * Auto logout settings.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Auto logout settings.
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * Enforcement runs early on `init` so an expired session is closed
@@ -117,7 +134,7 @@ final class IdleGuard {
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'init', array( $this, 'enforce' ), 5 );
 
 		add_action( 'wp_ajax_' . self::ACTION, array( $this, 'handle_ping' ) );
@@ -146,7 +163,7 @@ final class IdleGuard {
 		}
 
 		$user    = wp_get_current_user();
-		$timeout = Settings::instance()->timeout_for( $user );
+		$timeout = $this->settings->timeout_for( $user );
 
 		if ( $timeout <= 0 ) {
 			return;
@@ -216,7 +233,7 @@ final class IdleGuard {
 			wp_send_json_error( array( 'active' => false ) );
 		}
 
-		$this->touch( $user->ID, $token, Settings::instance()->timeout_for( $user ), true );
+		$this->touch( $user->ID, $token, $this->settings->timeout_for( $user ), true );
 
 		wp_send_json_success( array( 'active' => true ) );
 	}
@@ -237,13 +254,13 @@ final class IdleGuard {
 		}
 
 		$user    = wp_get_current_user();
-		$timeout = Settings::instance()->timeout_for( $user );
+		$timeout = $this->settings->timeout_for( $user );
 
 		if ( $timeout <= 0 ) {
 			return;
 		}
 
-		$settings = Settings::instance()->all();
+		$settings = $this->settings->all();
 
 		// The warning can't eat the whole timeout — a 60s warning on a
 		// 1-minute timeout would open the dialog the instant the page

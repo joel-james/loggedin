@@ -13,10 +13,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Sessions;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\Lockout\Displaced;
-use FoxeLabs\Loggedin\Modules\Lockout\Unlock;
-use FoxeLabs\Loggedin\Modules\PasswordSignout\PasswordSignout;
 use WP_User;
 
 defined( 'WPINC' ) || die;
@@ -27,8 +23,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class LastLogin {
-
-	use Singleton;
 
 	/**
 	 * User meta holding the Unix time of the last login.
@@ -44,7 +38,7 @@ final class LastLogin {
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'wp_login', array( $this, 'record' ), 10, 2 );
 	}
 

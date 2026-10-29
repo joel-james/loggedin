@@ -17,10 +17,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\UserSessions;
 
-use FoxeLabs\Loggedin\Admin\Admin;
-use FoxeLabs\Loggedin\Admin\Assets;
-use FoxeLabs\Loggedin\Admin\ExemptAdminsNotice;
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Sessions\LastLogin;
 use WP_Session_Tokens;
 use WP_User;
@@ -34,8 +30,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class UsersList {
-
-	use Singleton;
 
 	/**
 	 * Row and bulk action name.
@@ -52,13 +46,33 @@ final class UsersList {
 	private const DONE_ARG = 'loggedin_signed_out';
 
 	/**
+	 * Last login record.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var LastLogin
+	 */
+	private LastLogin $last_login;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param LastLogin $last_login Last login record.
+	 */
+	public function __construct( LastLogin $last_login ) {
+		$this->last_login = $last_login;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.4.0
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_filter( 'manage_users_columns', array( $this, 'columns' ) );
 		add_filter( 'manage_users_sortable_columns', array( $this, 'sortable_columns' ) );
 		add_filter( 'manage_users_custom_column', array( $this, 'column' ), 10, 3 );
@@ -123,7 +137,7 @@ final class UsersList {
 			return (string) $output;
 		}
 
-		$time = LastLogin::instance()->get( (int) $user_id );
+		$time = $this->last_login->get( (int) $user_id );
 
 		if ( ! $time ) {
 			return '<span aria-hidden="true">—</span><span class="screen-reader-text">' . esc_html__( 'No login recorded', 'loggedin' ) . '</span>';

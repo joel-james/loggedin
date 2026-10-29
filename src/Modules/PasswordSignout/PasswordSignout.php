@@ -21,13 +21,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Modules\PasswordSignout;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\Lockout\Displaced;
-use FoxeLabs\Loggedin\Modules\Lockout\Unlock;
-use FoxeLabs\Loggedin\Sessions\LastLogin;
-use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
-use FoxeLabs\Loggedin\Sessions\SessionGuard;
-use FoxeLabs\Loggedin\Sessions\SessionStore;
+use FoxeLabs\Loggedin\Modules\Module;
 use FoxeLabs\Loggedin\Settings\Settings;
 use WP_Session_Tokens;
 use WP_User;
@@ -39,9 +33,27 @@ defined( 'WPINC' ) || die;
  *
  * @since 3.4.0
  */
-final class PasswordSignout {
+final class PasswordSignout implements Module {
 
-	use Singleton;
+	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Settings store.
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
 
 	/**
 	 * Register hooks.
@@ -54,7 +66,7 @@ final class PasswordSignout {
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'profile_update', array( $this, 'on_profile_update' ), 10, 2 );
 		add_action( 'wp_set_password', array( $this, 'on_set_password' ), 10, 2 );
 	}
@@ -105,7 +117,7 @@ final class PasswordSignout {
 	 * @return void
 	 */
 	private function sign_out( int $user_id ): void {
-		if ( $user_id <= 0 || ! Settings::instance()->get( 'password_signout', true ) ) {
+		if ( $user_id <= 0 || ! $this->settings->get( 'password_signout', true ) ) {
 			return;
 		}
 

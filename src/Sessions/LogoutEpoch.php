@@ -30,10 +30,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Sessions;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\Lockout\Displaced;
-use FoxeLabs\Loggedin\Modules\Lockout\Unlock;
-use FoxeLabs\Loggedin\Modules\PasswordSignout\PasswordSignout;
 use WP_Session_Tokens;
 
 defined( 'WPINC' ) || die;
@@ -44,8 +40,6 @@ defined( 'WPINC' ) || die;
  * @since 3.3.0
  */
 final class LogoutEpoch {
-
-	use Singleton;
 
 	/**
 	 * Option storing the unix timestamp sessions must be newer than.
@@ -58,6 +52,26 @@ final class LogoutEpoch {
 	public const OPTION = 'loggedin_logout_all_before';
 
 	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param SessionStore $store Session store.
+	 */
+	public function __construct( SessionStore $store ) {
+		$this->store = $store;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * Priority 30 on `determine_current_user` so we run after core's
@@ -66,7 +80,7 @@ final class LogoutEpoch {
 	 *
 	 * @since 3.3.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_filter( 'determine_current_user', array( $this, 'invalidate_stale_session' ), 30 );
 	}
 
@@ -143,7 +157,7 @@ final class LogoutEpoch {
 		do_action(
 			'loggedin_session_invalidated',
 			(int) $user_id,
-			SessionStore::instance()->verifier( $token )
+			$this->store->verifier( $token )
 		);
 
 		return false;

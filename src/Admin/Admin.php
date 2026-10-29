@@ -25,9 +25,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Admin;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\UserSessions\ProfileSessions;
-use FoxeLabs\Loggedin\Modules\UserSessions\UsersList;
 use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Reviews\Notice as Review_Notice;
 use WP_Session_Tokens;
@@ -41,14 +38,12 @@ defined( 'WPINC' ) || die;
  */
 final class Admin {
 
-	use Singleton;
-
 	/**
 	 * Register hooks.
 	 *
 	 * @since 3.0.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'force_logout' ) );
 

@@ -34,6 +34,26 @@ defined( 'WPINC' ) || die;
 final class SettingsCommand {
 
 	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Settings store.
+	 */
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
+
+	/**
 	 * List every setting and its current value.
 	 *
 	 * ## OPTIONS
@@ -71,7 +91,7 @@ final class SettingsCommand {
 	public function list_( array $args, array $assoc_args ): void {
 		$rows = array();
 
-		foreach ( Settings::instance()->all() as $key => $value ) {
+		foreach ( $this->settings->all() as $key => $value ) {
 			$rows[] = array(
 				'key'   => (string) $key,
 				'value' => is_scalar( $value ) ? (string) $value : wp_json_encode( $value ),
@@ -105,7 +125,7 @@ final class SettingsCommand {
 	public function get( array $args ): void {
 		$key = $this->validate_key( $args[0] );
 
-		$value = Settings::instance()->get( $key );
+		$value = $this->settings->get( $key );
 
 		WP_CLI::line( is_scalar( $value ) ? (string) $value : (string) wp_json_encode( $value ) );
 	}
@@ -148,7 +168,7 @@ final class SettingsCommand {
 	public function set( array $args ): void {
 		$key      = $this->validate_key( $args[0] );
 		$value    = (string) $args[1];
-		$settings = Settings::instance();
+		$settings = $this->settings;
 		$typed    = $value;
 
 		// On/off settings take true/false, yes/no, on/off or 1/0.
@@ -201,7 +221,7 @@ final class SettingsCommand {
 	 * @return string
 	 */
 	private function validate_key( string $key ): string {
-		$known = array_keys( Settings::instance()->defaults() );
+		$known = array_keys( $this->settings->defaults() );
 
 		if ( ! in_array( $key, $known, true ) ) {
 			WP_CLI::error(

@@ -9,9 +9,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Tests\Modules\UserSessions;
 
-use FoxeLabs\Loggedin\Modules\UserSessions\ProfileSessions;
-use FoxeLabs\Loggedin\Sessions\SessionGuard;
-use FoxeLabs\Loggedin\Sessions\SessionStore;
+use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Loggedin\Tests\Support\RedirectException;
 use WP_Session_Tokens;
 use WP_UnitTestCase;
@@ -34,7 +32,7 @@ class ProfileSessionsTest extends WP_UnitTestCase {
 		$this->user_id = self::factory()->user->create();
 		wp_set_current_user( $this->user_id );
 
-		remove_filter( 'attach_session_information', array( SessionGuard::instance(), 'enforce_on_create' ) );
+		remove_filter( 'attach_session_information', array( Plugin::instance()->session_guard(), 'enforce_on_create' ) );
 
 		$manager       = WP_Session_Tokens::get_instance( $this->user_id );
 		$this->current = $manager->create( time() + HOUR_IN_SECONDS );
@@ -75,7 +73,7 @@ class ProfileSessionsTest extends WP_UnitTestCase {
 		$_REQUEST['_wpnonce'] = wp_create_nonce( 'loggedin_end_session_' . $verifier );
 
 		try {
-			ProfileSessions::instance()->end_session();
+			Plugin::instance()->user_sessions()->profile_sessions()->end_session();
 		} catch ( RedirectException $redirect ) {
 			return $redirect->getMessage();
 		}
@@ -84,14 +82,14 @@ class ProfileSessionsTest extends WP_UnitTestCase {
 	}
 
 	public function test_another_device_can_be_signed_out(): void {
-		$location = $this->sign_out( SessionStore::instance()->verifier( $this->other ) );
+		$location = $this->sign_out( Plugin::instance()->session_store()->verifier( $this->other ) );
 
 		$this->assertStringContainsString( 'loggedin_session_ended=1', $location );
 		$this->assertNull( WP_Session_Tokens::get_instance( $this->user_id )->get( $this->other ) );
 	}
 
 	public function test_this_device_is_never_signed_out_here(): void {
-		$location = $this->sign_out( SessionStore::instance()->verifier( $this->current ) );
+		$location = $this->sign_out( Plugin::instance()->session_store()->verifier( $this->current ) );
 
 		$this->assertStringContainsString( 'loggedin_session_ended=0', $location );
 		$this->assertNotNull( WP_Session_Tokens::get_instance( $this->user_id )->get( $this->current ) );
@@ -99,7 +97,7 @@ class ProfileSessionsTest extends WP_UnitTestCase {
 
 	public function test_the_list_shows_each_device_once(): void {
 		ob_start();
-		ProfileSessions::instance()->own( get_user_by( 'id', $this->user_id ) );
+		Plugin::instance()->user_sessions()->profile_sessions()->own( get_user_by( 'id', $this->user_id ) );
 		$html = (string) ob_get_clean();
 
 		$this->assertSame( 1, substr_count( $html, 'This device' ) );

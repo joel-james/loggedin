@@ -18,10 +18,6 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Admin;
 
 use FoxeLabs\Loggedin\Addons\Addons;
-use FoxeLabs\Loggedin\Contracts\Singleton;
-use FoxeLabs\Loggedin\Modules\AutoLogout\Settings as AutoLogoutSettings;
-use FoxeLabs\Loggedin\Modules\UserSessions\ProfileSessions;
-use FoxeLabs\Loggedin\Modules\UserSessions\UsersList;
 use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Loggedin\Sessions\SessionGuard;
 use FoxeLabs\Loggedin\Settings\Settings;
@@ -34,8 +30,6 @@ defined( 'WPINC' ) || die;
  * @since 3.0.0
  */
 final class Assets {
-
-	use Singleton;
 
 	/**
 	 * Entry-file basename emitted by `wp-scripts build`.
@@ -67,13 +61,44 @@ final class Assets {
 	private const SCREEN = 'users_page_loggedin';
 
 	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Add-ons registry.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Addons
+	 */
+	private Addons $addons;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Settings $settings Settings store.
+	 * @param Addons   $addons   Add-ons registry.
+	 */
+	public function __construct( Settings $settings, Addons $addons ) {
+		$this->settings = $settings;
+		$this->addons   = $addons;
+	}
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.0.0
 	 *
 	 * @return void
 	 */
-	protected function init(): void {
+	public function register(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'register_jsx_runtime' ), 0 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 	}
@@ -230,14 +255,6 @@ final class Assets {
 			'defaultMessage' => SessionGuard::default_message(),
 			'activeAddons'   => $this->active_addon_slugs(),
 			'roles'          => array_map( 'translate_user_role', wp_roles()->get_names() ),
-			'autoLogout'     => array(
-				'max' => array(
-					'idle_timeout'      => AutoLogoutSettings::MAX_IDLE_TIMEOUT,
-					'warning'           => AutoLogoutSettings::MAX_WARNING,
-					'session_lifetime'  => AutoLogoutSettings::MAX_SESSION_LIFETIME,
-					'remember_lifetime' => AutoLogoutSettings::MAX_REMEMBER_LIFETIME,
-				),
-			),
 			'schema'         => $this->settings_schema(),
 		);
 
@@ -245,7 +262,7 @@ final class Assets {
 		 * Filter the localised script vars for the admin app.
 		 *
 		 * @since 3.0.0
-		 * @since 3.4.0 Adds `wpVersion`, `phpVersion`, `urls`, `defaultMessage`, `homeUrl`, `activeAddons`, `roles`, `autoLogout` and `schema`.
+		 * @since 3.4.0 Adds `wpVersion`, `phpVersion`, `urls`, `defaultMessage`, `homeUrl`, `activeAddons`, `roles`, `autoLogout` (added by the auto logout module) and `schema`.
 		 *
 		 * @param array $vars Vars passed into the React tree.
 		 */
@@ -264,7 +281,7 @@ final class Assets {
 	 * @return array<string, array{label: string, desc: string}>
 	 */
 	private function logics_payload(): array {
-		return Settings::instance()->logics();
+		return $this->settings->logics();
 	}
 
 	/**
@@ -280,7 +297,7 @@ final class Assets {
 	private function active_addon_slugs(): array {
 		$slugs = array();
 
-		foreach ( Addons::instance()->get_registered_addons_public() as $args ) {
+		foreach ( $this->addons->get_registered_addons_public() as $args ) {
 			if ( ! empty( $args['slug'] ) ) {
 				$slugs[] = (string) $args['slug'];
 			}
@@ -332,7 +349,7 @@ final class Assets {
 	 *
 	 * @since 3.4.0
 	 *
-	 * @return array{pages: array<int, array>, cards: array<int, array>, fields: array<int, array>}
+	 * @return array{pages: array<int, array<string, mixed>>, cards: array<int, array<string, mixed>>, fields: array<int, array<string, mixed>>}
 	 */
 	private function settings_schema(): array {
 		/**

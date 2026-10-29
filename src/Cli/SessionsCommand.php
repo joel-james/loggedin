@@ -38,6 +38,26 @@ defined( 'WPINC' ) || die;
 final class SessionsCommand {
 
 	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param SessionStore $store Session store.
+	 */
+	public function __construct( SessionStore $store ) {
+		$this->store = $store;
+	}
+
+	/**
 	 * Usermeta key WordPress stores session tokens under.
 	 *
 	 * @since 3.1.0
@@ -329,7 +349,7 @@ final class SessionsCommand {
 			);
 		}
 
-		if ( ! in_array( $token, SessionStore::instance()->verifiers( (int) $user->ID ), true ) ) {
+		if ( ! in_array( $token, $this->store->verifiers( (int) $user->ID ), true ) ) {
 			WP_CLI::error(
 				sprintf(
 					/* translators: 1: token hash, 2: user login. */
@@ -349,7 +369,7 @@ final class SessionsCommand {
 			$assoc_args
 		);
 
-		SessionStore::instance()->destroy( (int) $user->ID, array( $token ) );
+		$this->store->destroy( (int) $user->ID, array( $token ) );
 
 		/**
 		 * Fires after a single session is destroyed from the CLI.
@@ -466,7 +486,7 @@ final class SessionsCommand {
 	 * @return bool
 	 */
 	private function is_default_storage( int $user_id ): bool {
-		return SessionStore::instance()->is_default_storage( $user_id );
+		return $this->store->is_default_storage( $user_id );
 	}
 
 	/**

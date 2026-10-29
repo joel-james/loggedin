@@ -13,6 +13,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Tests\Sessions;
 
+use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
 use WP_Session_Tokens;
 use WP_UnitTestCase;
@@ -32,7 +33,7 @@ class LogoutEpochTest extends WP_UnitTestCase {
 
 		// Make sure the filter is registered even if another test
 		// already instantiated the singleton.
-		LogoutEpoch::instance();
+		Plugin::instance()->logout_epoch();
 	}
 
 	public function tear_down(): void {
@@ -85,7 +86,7 @@ class LogoutEpochTest extends WP_UnitTestCase {
 
 		update_option( LogoutEpoch::OPTION, time(), true );
 
-		$result = LogoutEpoch::instance()->invalidate_stale_session( $this->user_id );
+		$result = Plugin::instance()->logout_epoch()->invalidate_stale_session( $this->user_id );
 
 		$this->assertFalse( $result );
 		$this->assertNull(
@@ -98,7 +99,7 @@ class LogoutEpochTest extends WP_UnitTestCase {
 
 		update_option( LogoutEpoch::OPTION, time(), true );
 
-		$result = LogoutEpoch::instance()->invalidate_stale_session( $this->user_id );
+		$result = Plugin::instance()->logout_epoch()->invalidate_stale_session( $this->user_id );
 
 		$this->assertSame( $this->user_id, $result );
 		$this->assertNotEmpty(
@@ -109,7 +110,7 @@ class LogoutEpochTest extends WP_UnitTestCase {
 	public function test_no_epoch_means_no_change(): void {
 		$this->create_session( time() - DAY_IN_SECONDS );
 
-		$result = LogoutEpoch::instance()->invalidate_stale_session( $this->user_id );
+		$result = Plugin::instance()->logout_epoch()->invalidate_stale_session( $this->user_id );
 
 		$this->assertSame( $this->user_id, $result );
 	}
@@ -120,7 +121,7 @@ class LogoutEpochTest extends WP_UnitTestCase {
 		LogoutEpoch::logout_all( true );
 
 		// The caller's session was re-stamped, so it must pass the check.
-		$result = LogoutEpoch::instance()->invalidate_stale_session( $this->user_id );
+		$result = Plugin::instance()->logout_epoch()->invalidate_stale_session( $this->user_id );
 
 		$this->assertSame( $this->user_id, $result );
 		$this->assertNotEmpty(
@@ -145,7 +146,7 @@ class LogoutEpochTest extends WP_UnitTestCase {
 			2
 		);
 
-		LogoutEpoch::instance()->invalidate_stale_session( $this->user_id );
+		Plugin::instance()->logout_epoch()->invalidate_stale_session( $this->user_id );
 
 		$this->assertSame( $this->user_id, $captured );
 		// The verifier, never the raw cookie token.
@@ -158,7 +159,7 @@ class LogoutEpochTest extends WP_UnitTestCase {
 
 		update_option( LogoutEpoch::OPTION, time(), true );
 
-		$result = LogoutEpoch::instance()->invalidate_stale_session( $this->user_id );
+		$result = Plugin::instance()->logout_epoch()->invalidate_stale_session( $this->user_id );
 
 		$this->assertSame( $this->user_id, $result );
 	}

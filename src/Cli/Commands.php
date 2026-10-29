@@ -2,8 +2,8 @@
 /**
  * WP-CLI command registrar.
  *
- * Boots the `wp loggedin ...` command tree. Loaded from
- * {@see \FoxeLabs\Loggedin\Core::cli()}, which only runs the module when
+ * Boots the `wp loggedin ...` command tree. Registered by
+ * {@see \FoxeLabs\Loggedin\Plugin::boot()}, which only does so when
  * the request is actually a WP-CLI one — so nothing in this directory
  * is ever touched on a web request.
  *
@@ -19,7 +19,8 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Cli;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
+use FoxeLabs\Loggedin\Settings\Settings;
 use WP_CLI;
 
 defined( 'WPINC' ) || die;
@@ -31,24 +32,53 @@ defined( 'WPINC' ) || die;
  */
 final class Commands {
 
-	use Singleton;
+	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
+	 * Settings store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param SessionStore $store    Session store.
+	 * @param Settings     $settings Settings store.
+	 */
+	public function __construct( SessionStore $store, Settings $settings ) {
+		$this->store    = $store;
+		$this->settings = $settings;
+	}
 
 	/**
 	 * Register the command tree.
 	 *
-	 * The `class_exists` guard is belt-and-braces: `Core` already
+	 * The `class_exists` guard is belt-and-braces: `Plugin` already
 	 * gates this module behind the `WP_CLI` constant, but the check
 	 * keeps the class safe to instantiate directly from a test.
 	 *
 	 * @since 3.1.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		if ( ! class_exists( WP_CLI::class ) ) {
 			return;
 		}
 
-		WP_CLI::add_command( 'loggedin sessions', new SessionsCommand() );
-		WP_CLI::add_command( 'loggedin settings', new SettingsCommand() );
+		WP_CLI::add_command( 'loggedin sessions', new SessionsCommand( $this->store ) );
+		WP_CLI::add_command( 'loggedin settings', new SettingsCommand( $this->settings ) );
 
 		/**
 		 * Fires after the core `wp loggedin` commands are registered.

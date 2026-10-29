@@ -28,7 +28,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Rest;
 
-use FoxeLabs\Loggedin\Contracts\Singleton;
 use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
 use WP_Error;
 use WP_REST_Request;
@@ -46,14 +45,12 @@ defined( 'WPINC' ) || die;
  */
 final class SessionsEndpoint extends Endpoint {
 
-	use Singleton;
-
 	/**
 	 * Register hooks.
 	 *
 	 * @since 3.0.0
 	 */
-	protected function init(): void {
+	public function register(): void {
 		$this->hook();
 	}
 

@@ -9,7 +9,7 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Tests\Admin;
 
-use FoxeLabs\Loggedin\Admin\Assets;
+use FoxeLabs\Loggedin\Plugin;
 use WP_UnitTestCase;
 
 
@@ -21,7 +21,7 @@ class AssetsTest extends WP_UnitTestCase {
 	public function test_the_jsx_runtime_is_registered_where_wordpress_lacks_it(): void {
 		wp_deregister_script( 'react-jsx-runtime' );
 
-		Assets::instance()->register_jsx_runtime( 'users_page_loggedin' );
+		Plugin::instance()->assets()->register_jsx_runtime( 'users_page_loggedin' );
 
 		$this->assertStringContainsString( 'loggedin/build/react-jsx-runtime.js', wp_scripts()->registered['react-jsx-runtime']->src );
 	}
@@ -30,7 +30,7 @@ class AssetsTest extends WP_UnitTestCase {
 		wp_deregister_script( 'react-jsx-runtime' );
 		wp_register_script( 'react-jsx-runtime', '/wp-includes/js/dist/vendor/react-jsx-runtime.js', array( 'react' ), '1', true );
 
-		Assets::instance()->register_jsx_runtime( 'users_page_loggedin' );
+		Plugin::instance()->assets()->register_jsx_runtime( 'users_page_loggedin' );
 
 		$this->assertSame( '/wp-includes/js/dist/vendor/react-jsx-runtime.js', wp_scripts()->registered['react-jsx-runtime']->src );
 	}
@@ -38,7 +38,7 @@ class AssetsTest extends WP_UnitTestCase {
 	public function test_other_screens_are_left_alone(): void {
 		wp_deregister_script( 'react-jsx-runtime' );
 
-		Assets::instance()->register_jsx_runtime( 'index.php' );
+		Plugin::instance()->assets()->register_jsx_runtime( 'index.php' );
 
 		$this->assertFalse( wp_script_is( 'react-jsx-runtime', 'registered' ) );
 	}
