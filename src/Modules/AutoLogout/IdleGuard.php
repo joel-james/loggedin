@@ -385,7 +385,7 @@ final class IdleGuard {
 	 * Refuse the REST request whose session was just ended for idling.
 	 *
 	 * The error carries the login URL, so an admin app can send the
-	 * user there (see `assets/src/utils/api-init.js`).
+	 * user there (see `assets/src/admin/utils/api-init.js`).
 	 *
 	 * @since 3.4.0
 	 *

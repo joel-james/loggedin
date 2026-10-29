@@ -35,7 +35,7 @@ final class Assets {
 	 * Entry-file basename emitted by `wp-scripts build`.
 	 *
 	 * The build script in `package.json` compiles
-	 * `assets/src/admin.js` → `build/admin.{js,css,asset.php}`. Bump
+	 * `assets/src/admin/index.js` → `build/admin.{js,css,asset.php}`. Bump
 	 * this if the entry file is renamed.
 	 *
 	 * @since 3.0.0

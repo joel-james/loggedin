@@ -21,7 +21,7 @@
  * Vanilla DOM rather than React so this ships with zero dependencies —
  * it runs on every page of every signed-in visitor, not just admins.
  */
-import './idle/idle.scss';
+import './idle.scss';
 
 ( function () {
 	if (

@@ -17,8 +17,8 @@
   ],
   "license": "GPL-2.0-or-later",
   "scripts": {
-    "build": "wp-scripts build assets/src/admin.js assets/src/idle.js assets/src/react-jsx-runtime.js --output-path=build",
-    "start": "wp-scripts start assets/src/admin.js assets/src/idle.js assets/src/react-jsx-runtime.js --output-path=build",
+    "build": "wp-scripts build admin=./assets/src/admin/index.js react-jsx-runtime=./assets/src/admin/react-jsx-runtime.js idle=./assets/src/front/idle.js --output-path=build",
+    "start": "wp-scripts start admin=./assets/src/admin/index.js react-jsx-runtime=./assets/src/admin/react-jsx-runtime.js idle=./assets/src/front/idle.js --output-path=build",
     "format": "wp-scripts format assets/src",
     "lint:js": "wp-scripts lint-js assets/src",
     "pack": "bin/pack.sh"

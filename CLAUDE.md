@@ -17,7 +17,7 @@ Freemius: Active Sessions, Limit Per Role, Limit Per User and Real-time Logout.
   or public class changes.
 - **Admin UI:** follow the Foxe Plugin Admin Kit design system
   (https://claude.ai/artifact/3GMTBRMn2xZB5jk7wZfX9w), ported from Convocept. Components live in
-  `assets/src/ui/` (prefix `loggedin-`), free of Loggedin logic. Add-ons reach them through
+  `assets/src/admin/ui/` (prefix `loggedin-`), free of Loggedin logic. Add-ons reach them through
   `window.loggedin.ui`.
 
 ## Non-negotiables
@@ -46,6 +46,10 @@ Freemius: Active Sessions, Limit Per Role, Limit Per User and Real-time Logout.
   registers them. A module may use core services, but never another module, and core never
   reaches into a module: they talk through hooks. Add a module to `Plugin::modules()`.
 - Tests in `tests/php/` mirror `src/`.
+- `assets/src/admin/` is the React settings screen (entry `index.js`) and the
+  `react-jsx-runtime` shim for WordPress 6.5. `assets/src/front/` is vanilla JS for public pages
+  (the idle timer), with no dependencies. Both build into `build/` under fixed names
+  (`admin`, `idle`, `react-jsx-runtime`) that PHP enqueues.
 
 ## Conventions
 - Namespace `FoxeLabs\Loggedin\`, PSR-4 from `src/`. Hooks, options, user meta, REST namespace

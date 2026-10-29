@@ -4,7 +4,7 @@
  *
  * Loggedin 3.4.0 rebuilt its settings screen on the Foxe Plugin Admin
  * Kit. Add-ons built before it still work (their panels and tabs are
- * drawn by the compatibility layer in `assets/src/app/pages.js`), but
+ * drawn by the compatibility layer in `assets/src/admin/app/pages.js`), but
  * they look out of place until they're updated. This tells the admin
  * which ones to update.
  *

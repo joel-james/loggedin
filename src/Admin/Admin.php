@@ -165,7 +165,7 @@ final class Admin {
 	/**
 	 * Render the React mount point.
 	 *
-	 * The bundle's entry (`assets/src/admin.js`) looks for
+	 * The bundle's entry (`assets/src/admin/index.js`) looks for
 	 * `#loggedin-admin` and bails silently if it's missing.
 	 * `.loggedin-admin` is the root every kit style is scoped under.
 	 *
