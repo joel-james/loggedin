@@ -454,7 +454,7 @@ Settled 2026-09-26 unless dated otherwise.
 - [x] B4 "Your sessions" on the profile; a count on other users' profiles —
       2026-10-29. WordPress's own "Log Out Everywhere Else" (and "Log Out
       Everywhere" on another user's profile) stays the way to end the rest,
-      instead of a second button of ours. Single-session writes go through `Session_Store`
+      instead of a second button of ours. Single-session writes go through `SessionStore`
       (also used by Logout Oldest and WP-CLI)
 - [x] B6 Logout Oldest and Logout All enforced as a session is created —
       2026-10-29. Not yet tested against Nextend Social Login, a magic-link

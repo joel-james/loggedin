@@ -266,7 +266,7 @@ final class SessionsCommand {
 
 		WP_Session_Tokens::get_instance( (int) $user->ID )->destroy_all();
 
-		/** This action is documented in includes/front/class-session-guard.php */
+		/** This action is documented in src/Sessions/SessionGuard.php */
 		do_action( 'loggedin_destroy_all_sessions', (int) $user->ID );
 
 		WP_CLI::success(

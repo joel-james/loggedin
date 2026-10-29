@@ -93,7 +93,7 @@ final class Admin {
 		if ( $user ) {
 			WP_Session_Tokens::get_instance( $user->ID )->destroy_all();
 
-			/** This action is documented in includes/api/class-sessions.php */
+			/** This action is documented in src/Rest/SessionsEndpoint.php */
 			do_action( 'loggedin_destroy_all_sessions', $user->ID );
 
 			add_settings_error(

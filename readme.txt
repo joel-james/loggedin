@@ -245,6 +245,7 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * New: "Your sessions" on the profile screen.
 * New: Logout Oldest and Logout All now also apply to logins that skip the login form (social login, magic links, popup logins).
 * New: Add-ons can add pages, cards and fields from PHP with the `loggedin_settings_schema` filter.
+* New: `loggedin_sessions_displacing` action before Logout All or Logout Oldest ends sessions, and `loggedin_uninstalled` after the plugin is deleted.
 * New: A notice lists add-ons that need an update for the new settings screen.
 * Improve: Block New checks the password first. A wrong password gets WordPress's usual error, not the limit message.
 * Improve: Add-ons built for the old screen keep working, and links from before 3.4.0 still open the right page.
@@ -253,9 +254,11 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * Improve: Login modes added by other plugins through `loggedin_logics` can be saved.
 * Fix: The old force-logout link now also checks that the user can manage options.
 * Fix: Logout Oldest skips sessions that already expired, and ends as many as needed when the limit was lowered.
+* Fix: Deleting the plugin now also removes the review notice's settings, and on multisite removes Loggedin's settings from every site.
 * Changed: Requires WordPress 6.5.
 * Changed: Force Logout moved to Manage › Sessions, and Support is now Help.
 * Changed: `loggedin_session_invalidated` passes the hashed session token instead of the raw one.
+* Changed: `loggedin_error_message` also passes the user, and `loggedin_init` passes the `Plugin` instance.
 * Changed: Sites updating from an earlier version keep self-unlock and the administrator exemption off until turned on.
 
 = 3.3.1 =
