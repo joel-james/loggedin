@@ -65,7 +65,7 @@ function footerFor( addon, onManage ) {
 		};
 	}
 
-	const href = addon.link || addon.homepage;
+	const href = addon.homepage || addon.link;
 
 	return {
 		status: {
