@@ -2,6 +2,7 @@
 /**
  * A feature built around the session limit.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules
  */
 

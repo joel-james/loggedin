@@ -12,6 +12,7 @@
  * the constructor contract ours (no implicit `new` by the framework)
  * and mirrors how the rest of the plugin hands modules around.
  *
+ * @since 3.1.0
  * @package FoxeLabs\Loggedin\Cli
  */
 

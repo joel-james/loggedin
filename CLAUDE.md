@@ -55,7 +55,12 @@ Freemius: Active Sessions, Limit Per Role, Limit Per User and Real-time Logout.
 - Namespace `FoxeLabs\Loggedin\`, PSR-4 from `src/`. Hooks, options, user meta, REST namespace
   (`loggedin/v1`), CSS classes and JS globals use the `loggedin` prefix. Text domain `loggedin`.
 - Option and meta names live in class constants (`Plugin::OPTION_KEY`, `LastLogin::META_KEY`), and
-  the Uninstaller reads those constants. A new stored key goes in both places.
+  the Uninstaller reads those constants. A new stored key goes in both places; an option read on
+  every request also goes in `Upgrader::autoload_options()`.
+- A new key in `loggedin_settings` goes in `Settings::defaults()` and `Settings::properties()`,
+  the one schema the REST routes and the sanitiser read.
+- Signing a user out everywhere goes through `SessionStore::end_all()`, which fires
+  `loggedin_destroy_all_sessions`; a caller adds its own narrower hook after it.
 - Minimum WordPress 6.5 and PHP 7.4. Use newer APIs through feature detection only.
 - WordPress Coding Standards, with one deliberate deviation: PSR-4 file names in `src/`.
   PHPStan level 6. No ignore comment without a `--` reason.

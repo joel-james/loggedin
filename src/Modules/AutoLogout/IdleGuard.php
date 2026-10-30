@@ -36,6 +36,7 @@
  * local timer and only contacts the server when the user is genuinely
  * interacting and the stored stamp is about to go stale.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\AutoLogout
  */
 
@@ -44,6 +45,7 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Modules\AutoLogout;
 
 use FoxeLabs\Loggedin\Plugin;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
 use WP_Error;
 use WP_Session_Tokens;
 use WP_User;
@@ -56,18 +58,6 @@ defined( 'WPINC' ) || die;
  * @since 3.4.0
  */
 final class IdleGuard {
-
-	/**
-	 * Hash algorithm core uses to turn a raw token into a verifier.
-	 *
-	 * Mirrors `WP_Session_Tokens::hash_token()`, which is private. The
-	 * `hash()` fallback that method carries is for PHP builds without
-	 * ext-hash; that extension can't be disabled on any version this
-	 * plugin supports, so only the SHA-256 branch is reachable here.
-	 *
-	 * @since 3.4.0
-	 */
-	private const VERIFIER_ALGO = 'sha256';
 
 	/**
 	 * Query arg appended to the login URL after an idle logout.
@@ -114,14 +104,25 @@ final class IdleGuard {
 	private Settings $settings;
 
 	/**
+	 * Session store, for the verifier of the current session.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
 	 * Set up the dependencies.
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param Settings $settings Auto logout settings.
+	 * @param Settings     $settings Auto logout settings.
+	 * @param SessionStore $store    Session store.
 	 */
-	public function __construct( Settings $settings ) {
+	public function __construct( Settings $settings, SessionStore $store ) {
 		$this->settings = $settings;
+		$this->store    = $store;
 	}
 
 	/**
@@ -186,7 +187,7 @@ final class IdleGuard {
 		// logout was turned on — or one whose stamp has been pruned —
 		// still ages out instead of being treated as freshly active.
 		$map         = $this->activity_map( $user->ID );
-		$verifier    = $this->verifier( $token );
+		$verifier    = $this->store->verifier( $token );
 		$last_active = (int) ( $map[ $verifier ] ?? $session['login'] ?? 0 );
 		$idle_for    = time() - $last_active;
 
@@ -260,59 +261,50 @@ final class IdleGuard {
 			return;
 		}
 
-		$settings = $this->settings->all();
+		$asset = Plugin::asset( 'idle' );
 
+		wp_enqueue_script( self::HANDLE, Plugin::url() . 'build/idle.js', $asset['dependencies'], $asset['version'], true );
+		wp_localize_script( self::HANDLE, 'loggedinAutoLogout', $this->script_data( $timeout ) );
+
+		if ( is_readable( Plugin::dir() . 'build/idle.css' ) ) {
+			wp_enqueue_style( self::HANDLE, Plugin::url() . 'build/idle.css', array(), $asset['version'] );
+			wp_style_add_data( self::HANDLE, 'rtl', 'replace' );
+		}
+	}
+
+	/**
+	 * Data the idle timer reads from `window.loggedinAutoLogout`.
+	 *
+	 * Seconds throughout; the script converts to milliseconds once.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param int $timeout The current user's idle timeout, in seconds.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function script_data( int $timeout ): array {
 		// The warning can't eat the whole timeout — a 60s warning on a
 		// 1-minute timeout would open the dialog the instant the page
 		// loads. Cap it at half the window.
-		$warning = (int) min( $settings['warning'], (int) floor( $timeout / 2 ) );
+		$warning = (int) min( $this->settings->all()['warning'], (int) floor( $timeout / 2 ) );
 
-		$asset_path = Plugin::dir() . 'build/idle.asset.php';
-		$asset      = is_readable( $asset_path )
-			? (array) include $asset_path
-			: array();
-
-		wp_enqueue_script(
-			self::HANDLE,
-			Plugin::url() . 'build/idle.js',
-			$asset['dependencies'] ?? array(),
-			$asset['version'] ?? Plugin::VERSION,
-			true
-		);
-
-		$style_path = Plugin::dir() . 'build/idle.css';
-		if ( is_readable( $style_path ) ) {
-			wp_enqueue_style(
-				self::HANDLE,
-				Plugin::url() . 'build/idle.css',
-				array(),
-				$asset['version'] ?? Plugin::VERSION
-			);
-			wp_style_add_data( self::HANDLE, 'rtl', 'replace' );
-		}
-
-		wp_localize_script(
-			self::HANDLE,
-			'loggedinAutoLogout',
-			array(
-				// Seconds throughout; the script converts to
-				// milliseconds once at boot.
-				'timeout'   => $timeout,
-				'warning'   => $warning,
-				'pingAfter' => $this->write_interval( $timeout ),
-				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'action'    => self::ACTION,
-				'nonce'     => wp_create_nonce( self::NONCE ),
-				'logoutUrl' => wp_logout_url( $this->notice_url() ),
-				'i18n'      => array(
-					'title'    => __( 'Still there?', 'loggedin' ),
-					/* translators: %s: countdown, e.g. "1:59". */
-					'message'  => __( 'You have been inactive for a while. For your security you will be signed out in %s.', 'loggedin' ),
-					'stay'     => __( 'Stay signed in', 'loggedin' ),
-					'logout'   => __( 'Sign out now', 'loggedin' ),
-					'expiring' => __( 'Signing you out…', 'loggedin' ),
-				),
-			)
+		return array(
+			'timeout'   => $timeout,
+			'warning'   => $warning,
+			'pingAfter' => $this->write_interval( $timeout ),
+			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+			'action'    => self::ACTION,
+			'nonce'     => wp_create_nonce( self::NONCE ),
+			'logoutUrl' => wp_logout_url( $this->notice_url() ),
+			'i18n'      => array(
+				'title'    => __( 'Still there?', 'loggedin' ),
+				/* translators: %s: countdown, e.g. "1:59". */
+				'message'  => __( 'You have been inactive for a while. For your security you will be signed out in %s.', 'loggedin' ),
+				'stay'     => __( 'Stay signed in', 'loggedin' ),
+				'logout'   => __( 'Sign out now', 'loggedin' ),
+				'expiring' => __( 'Signing you out…', 'loggedin' ),
+			),
 		);
 	}
 
@@ -438,7 +430,7 @@ final class IdleGuard {
 
 		$now      = time();
 		$map      = $this->activity_map( $user_id );
-		$verifier = $this->verifier( $token );
+		$verifier = $this->store->verifier( $token );
 		$last     = (int) ( $map[ $verifier ] ?? 0 );
 
 		if ( ! $force && ( $now - $last ) < $this->write_interval( $timeout ) ) {
@@ -498,23 +490,6 @@ final class IdleGuard {
 		}
 
 		return $map;
-	}
-
-	/**
-	 * Hash a raw session token into its verifier.
-	 *
-	 * Same value core stores as the `session_tokens` array key and the
-	 * Active Sessions add-on exposes as `token_hash`, so the two can be
-	 * joined without either side learning about the other.
-	 *
-	 * @since 3.4.0
-	 *
-	 * @param string $token Raw session token from the auth cookie.
-	 *
-	 * @return string
-	 */
-	private function verifier( string $token ): string {
-		return hash( self::VERIFIER_ALGO, $token );
 	}
 
 	/**

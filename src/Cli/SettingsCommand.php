@@ -9,10 +9,11 @@
  * in sync.
  *
  * The known-key list is read from `Settings::defaults()` rather than
- * hard-coded, so a key introduced by an add-on through the
- * `loggedin_settings_defaults` filter is readable and writable here
- * without touching this class.
+ * hard-coded, so a key an add-on adds through
+ * `loggedin_settings_defaults` is readable here, and writable once
+ * its schema is added through `loggedin_settings_properties` too.
  *
+ * @since 3.1.0
  * @package FoxeLabs\Loggedin\Cli
  */
 
@@ -194,7 +195,7 @@ final class SettingsCommand {
 			);
 		}
 
-		$settings->update( $candidate );
+		$settings->update( array( $key => $typed ) );
 
 		WP_CLI::success(
 			sprintf(

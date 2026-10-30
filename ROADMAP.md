@@ -52,8 +52,9 @@ on the new components.
 4. **Add-ons update independently of core.** Every JS and PHP extension point
    that add-ons use today keeps working through at least one release after it
    is replaced:
-   - JS: `loggedin.admin.tabs`, `loggedin.settings.panels` and
-     `loggedin.settings.force_logout.cross_sell`.
+   - JS: `loggedin.admin.tabs`, `loggedin.settings.panels`,
+     `loggedin.settings.force_logout.cross_sell`, and the `window.loggedin.ui`
+     components (Active Sessions draws its page with them).
    - PHP: the add-on registration hooks.
 5. **Backward-compatible defaults.** An existing install behaves the same
    after upgrading until the admin changes a setting. New defaults apply to
@@ -459,8 +460,19 @@ Settled 2026-09-26 unless dated otherwise.
 - [x] B6 Logout Oldest and Logout All enforced as a session is created —
       2026-10-29. Not yet tested against Nextend Social Login, a magic-link
       plugin, WooCommerce My Account, Ultimate Member or MemberPress; the
-      compatibility page says so
+      compatibility page says so. `check_password` is no longer hooked
+      (2026-10-30): it ran on password checks that aren't logins
+      (WooCommerce's current-password field, application passwords, 2FA)
+      and ended sessions with no new one to follow
 - [x] B7 readme, FAQ and docs pages — 2026-10-29. Store pages beyond the
       WordPress.org readme are not updated yet
+- [x] Code review of core and the four add-ons — 2026-10-30. One
+      `SessionStore::end_all()` for every "sign out everywhere" path, one
+      settings schema (`Settings::properties()`, filterable), one asset
+      manifest reader, often-read options stored so they autoload, App.js
+      and the large Active Sessions files split. Add-ons got their own
+      filters (`loggedin_limit_per_role_limit`,
+      `loggedin_realtime_logout_enabled` / `_interval`) and the legacy panels
+      a JSX runtime shim for WordPress 6.0–6.5
 - [ ] Phase C — Login History, Membership Limits, Login Alerts, Active Sessions upgrade
 - [ ] Phase D — bundle plan, discovery

@@ -18,6 +18,7 @@
  * `session_tokens` is shared with WordPress and other plugins, so this
  * writes it only when a session actually ends, never on a page load.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Sessions
  */
 
@@ -159,6 +160,55 @@ final class SessionStore {
 	}
 
 	/**
+	 * Sign a user out of every device.
+	 *
+	 * Goes through `WP_Session_Tokens`, so it works with any storage
+	 * backend. Every "sign out everywhere" path calls this, so
+	 * `loggedin_destroy_all_sessions` fires for all of them; each
+	 * caller fires its own, more specific hook as well.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param int  $user_id      User id.
+	 * @param bool $keep_current Keep the session making this request when
+	 *                           it is the user's own, so signing yourself
+	 *                           out doesn't end the request you made.
+	 *
+	 * @return void
+	 */
+	public function end_all( int $user_id, bool $keep_current = false ): void {
+		if ( $user_id <= 0 ) {
+			return;
+		}
+
+		$manager = WP_Session_Tokens::get_instance( $user_id );
+		$token   = $keep_current && get_current_user_id() === $user_id ? wp_get_session_token() : '';
+
+		if ( '' !== $token ) {
+			$manager->destroy_others( $token );
+		} else {
+			$manager->destroy_all();
+		}
+
+		/**
+		 * Fires after a user is signed out of every device.
+		 *
+		 * Fires for every path: a limit reached under Logout All, a
+		 * forced sign-out from the settings screen, the Users screen,
+		 * the REST API or WP-CLI, a password change, and the unlock
+		 * email. When users sign themselves out, the session they are
+		 * using is kept.
+		 *
+		 * @since 2.0.0
+		 * @since 3.4.0 Fires for the Users screen, password changes and
+		 *              the unlock email too.
+		 *
+		 * @param int $user_id User whose sessions were ended.
+		 */
+		do_action( 'loggedin_destroy_all_sessions', $user_id );
+	}
+
+	/**
 	 * Verifiers of the user's live sessions.
 	 *
 	 * @since 3.4.0
@@ -190,7 +240,8 @@ final class SessionStore {
 	 * A short name for the device a session was made on.
 	 *
 	 * "Chrome on macOS", "Safari on iPhone". Enough for someone to
-	 * recognise their own devices; not a full user-agent parser.
+	 * recognise their own devices; not a full user-agent parser, which
+	 * a site can plug in through `loggedin_session_device`.
 	 *
 	 * @since 3.4.0
 	 *
@@ -199,6 +250,32 @@ final class SessionStore {
 	 * @return string
 	 */
 	public function device( string $ua ): string {
+		/**
+		 * Filter the device name shown for a session.
+		 *
+		 * Shown on the profile screen's session list.
+		 *
+		 * @since 3.4.0
+		 *
+		 * @param string $name Device name, such as "Chrome on macOS".
+		 * @param string $ua   User agent stored with the session.
+		 */
+		return (string) apply_filters( 'loggedin_session_device', $this->parse_device( $ua ), $ua );
+	}
+
+	/**
+	 * Name the browser and system from a user agent.
+	 *
+	 * "Chrome on macOS", "Safari on iPhone". Enough for someone to
+	 * recognise their own devices; not a full user-agent parser.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string $ua User agent stored with the session.
+	 *
+	 * @return string
+	 */
+	private function parse_device( string $ua ): string {
 		$browsers = array(
 			'Edg/'           => 'Edge',
 			'OPR/'           => 'Opera',

@@ -21,6 +21,7 @@
  * React side a single text input with a hint, rather than a select
  * + value pair.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Rest
  */
 
@@ -29,29 +30,40 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Rest;
 
 use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
-use WP_Session_Tokens;
 use WP_User;
 
 defined( 'WPINC' ) || die;
 
 /**
- * REST endpoint for listing and force-destroying user sessions.
+ * REST endpoint for force-destroying user sessions.
  *
  * @since 3.0.0
  */
 final class SessionsEndpoint extends Endpoint {
 
 	/**
-	 * Register hooks.
+	 * Session store.
 	 *
-	 * @since 3.0.0
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
 	 */
-	public function register(): void {
-		$this->hook();
+	private SessionStore $store;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param SessionStore $store Session store.
+	 */
+	public function __construct( SessionStore $store ) {
+		$this->store = $store;
 	}
 
 	/**
@@ -131,21 +143,7 @@ final class SessionsEndpoint extends Endpoint {
 			);
 		}
 
-		WP_Session_Tokens::get_instance( $user->ID )->destroy_all();
-
-		/**
-		 * Fires after a user has been force-logged-out via the
-		 * Settings panel.
-		 *
-		 * Mirrors the action triggered by the legacy
-		 * `admin.php?loggedin_logout=1` flow so addons listening to
-		 * one path also see the other.
-		 *
-		 * @since 3.0.0
-		 *
-		 * @param int $user_id Id of the user whose sessions were destroyed.
-		 */
-		do_action( 'loggedin_destroy_all_sessions', $user->ID );
+		$this->store->end_all( $user->ID );
 
 		return new WP_REST_Response(
 			array(

@@ -11,6 +11,7 @@
  * The constants and static path helpers stay usable without an
  * instance; add-ons read `Plugin::VERSION`.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin
  */
 
@@ -112,7 +113,7 @@ final class Plugin {
 	/**
 	 * REST API namespace (without leading slash).
 	 *
-	 * Routes registered by `Api\*` controllers are prefixed with this
+	 * Routes registered by the `Rest\*` controllers are prefixed with this
 	 * value, and `Admin\Assets` localises `restUrl` to the resolved
 	 * `rest_url( self::REST_NAMESPACE . '/' )` so React code can call
 	 * `apiFetch({ path: 'settings' })` without hard-coding the
@@ -158,6 +159,38 @@ final class Plugin {
 	 */
 	public static function url(): string {
 		return plugin_dir_url( self::file() );
+	}
+
+	/**
+	 * Dependencies and version of a built script, from its manifest.
+	 *
+	 * `wp-scripts build` writes `build/<entry>.asset.php` next to each
+	 * bundle: the scripts it imports and a hash of its contents. Before
+	 * the first build, and in tests, there is no manifest, so the
+	 * caller's dependency list and the plugin version stand in.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string        $entry         Entry name, e.g. `admin`.
+	 * @param array<string> $fallback_deps Dependencies when there is no manifest.
+	 *
+	 * @return array{dependencies: array<string>, version: string}
+	 */
+	public static function asset( string $entry, array $fallback_deps = array() ): array {
+		$path     = self::dir() . 'build/' . $entry . '.asset.php';
+		$manifest = is_readable( $path ) ? include $path : null;
+
+		if ( ! is_array( $manifest ) ) {
+			return array(
+				'dependencies' => $fallback_deps,
+				'version'      => self::VERSION,
+			);
+		}
+
+		return array(
+			'dependencies' => $manifest['dependencies'] ?? array(),
+			'version'      => (string) ( $manifest['version'] ?? self::VERSION ),
+		);
 	}
 
 	/**
@@ -413,8 +446,8 @@ final class Plugin {
 	public function auto_logout(): AutoLogout {
 		return $this->service(
 			AutoLogout::class,
-			static function () {
-				return new AutoLogout();
+			function () {
+				return new AutoLogout( $this->session_store() );
 			}
 		);
 	}
@@ -446,7 +479,7 @@ final class Plugin {
 		return $this->service(
 			PasswordSignout::class,
 			function () {
-				return new PasswordSignout( $this->settings() );
+				return new PasswordSignout( $this->settings(), $this->session_store() );
 			}
 		);
 	}
@@ -509,8 +542,8 @@ final class Plugin {
 	public function admin(): Admin {
 		return $this->service(
 			Admin::class,
-			static function () {
-				return new Admin();
+			function () {
+				return new Admin( $this->session_store() );
 			}
 		);
 	}
@@ -589,8 +622,8 @@ final class Plugin {
 	public function sessions_endpoint(): SessionsEndpoint {
 		return $this->service(
 			SessionsEndpoint::class,
-			static function () {
-				return new SessionsEndpoint();
+			function () {
+				return new SessionsEndpoint( $this->session_store() );
 			}
 		);
 	}

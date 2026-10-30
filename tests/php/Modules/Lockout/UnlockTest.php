@@ -85,7 +85,7 @@ class UnlockTest extends WP_UnitTestCase {
 	 * @return string State.
 	 */
 	private function follow( string $method, string $key ): string {
-		$_GET['user'] = (string) $this->user_id;
+		$_GET['user']         = (string) $this->user_id;
 		$_GET['loggedin_key'] = $key;
 
 		try {

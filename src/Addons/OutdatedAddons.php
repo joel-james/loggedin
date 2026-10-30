@@ -11,12 +11,15 @@
  * Only add-ons that draw on Loggedin's screen are listed: an add-on
  * without settings there has nothing to look out of place.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Addons
  */
 
 declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Addons;
+
+use FoxeLabs\Loggedin\Admin\Admin;
 
 defined( 'WPINC' ) || die;
 
@@ -91,7 +94,7 @@ final class OutdatedAddons {
 		$minimum  = (array) apply_filters( 'loggedin_addon_minimum_versions', self::MINIMUM );
 		$outdated = array();
 
-		foreach ( $this->addons->get_registered_addons_public() as $args ) {
+		foreach ( $this->addons->get_registered_addons() as $args ) {
 			$slug = (string) ( $args['slug'] ?? '' );
 			$file = (string) ( $args['main_file'] ?? '' );
 
@@ -135,7 +138,7 @@ final class OutdatedAddons {
 		if (
 			! current_user_can( 'update_plugins' )
 			|| ! $screen
-			|| ! in_array( $screen->id, array( 'plugins', 'users_page_loggedin' ), true )
+			|| ! in_array( $screen->id, array( 'plugins', Admin::SCREEN ), true )
 		) {
 			return;
 		}

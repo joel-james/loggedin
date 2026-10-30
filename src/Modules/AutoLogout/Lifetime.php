@@ -12,6 +12,7 @@
  * active it was. Sites with a compliance requirement generally need
  * both.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\AutoLogout
  */
 

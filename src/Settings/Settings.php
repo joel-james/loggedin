@@ -20,6 +20,7 @@
  * `/wp/v2/settings` and lets the React Settings tab read/write it
  * via `@wordpress/core-data`'s `useEntityProp`.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Settings
  */
 
@@ -45,8 +46,16 @@ final class Settings {
 	 * see {@see self::logics()}.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Public, for the upgrader.
 	 */
-	private const BUILT_IN_LOGICS = array( 'allow', 'logout_oldest', 'block' );
+	public const BUILT_IN_LOGICS = array( 'allow', 'logout_oldest', 'block' );
+
+	/**
+	 * Setting keys Loggedin itself defines and sanitises.
+	 *
+	 * @since 3.4.0
+	 */
+	private const BUILT_IN_KEYS = array( 'maximum', 'logic', 'unlock', 'exempt_admins', 'password_signout', 'message', 'displaced_redirect' );
 
 	/**
 	 * Memoized result of {@see self::all()} for this request.
@@ -214,6 +223,13 @@ final class Settings {
 			return $value;
 		}
 
+		// A built-in mode is always valid. Checking it first skips
+		// `logics()`, whose labels call `__()` and would load the
+		// translations on every page that reads the settings.
+		if ( in_array( (string) $value['logic'], self::BUILT_IN_LOGICS, true ) ) {
+			return $value;
+		}
+
 		if ( ! in_array( (string) $value['logic'], $this->logic_ids(), true ) ) {
 			$value['logic'] = $this->defaults()['logic'];
 		}
@@ -224,9 +240,9 @@ final class Settings {
 	/**
 	 * Default values for every known setting key.
 	 *
-	 * Filterable so an addon can introduce new keys at runtime; once
-	 * declared here they'll round-trip through `all()` / `update()`
-	 * automatically.
+	 * Filterable so an addon can introduce new keys at runtime. A new
+	 * key also needs its schema in `loggedin_settings_properties`
+	 * ({@see self::properties()}) to be stored.
 	 *
 	 * @since 3.0.0
 	 *
@@ -325,9 +341,8 @@ final class Settings {
 	 *
 	 * The `show_in_rest` schema is what makes the option available at
 	 * `/wp/v2/settings` for the React app. `additionalProperties =>
-	 * false` is intentional — unknown keys are dropped at the REST
-	 * boundary so an addon can't smuggle arbitrary fields into the
-	 * site option via a crafted request.
+	 * false` is intentional: a key not declared in
+	 * {@see self::properties()} is dropped at the REST boundary.
 	 *
 	 * @since 3.0.0
 	 *
@@ -345,35 +360,58 @@ final class Settings {
 					'schema' => array(
 						'type'                 => 'object',
 						'additionalProperties' => false,
-						'properties'           => array(
-							'maximum'            => array(
-								'type'    => 'integer',
-								'minimum' => 1,
-							),
-							'logic'              => array(
-								'type' => 'string',
-								'enum' => $this->logic_ids(),
-							),
-							'unlock'             => array(
-								'type' => 'boolean',
-							),
-							'exempt_admins'      => array(
-								'type' => 'boolean',
-							),
-							'password_signout'   => array(
-								'type' => 'boolean',
-							),
-							'message'            => array(
-								'type' => 'string',
-							),
-							'displaced_redirect' => array(
-								'type' => 'string',
-							),
-						),
+						'properties'           => $this->properties(),
 					),
 				),
 			)
 		);
+	}
+
+	/**
+	 * JSON schema of each setting, keyed by setting id.
+	 *
+	 * The one list of accepted keys: the option's REST schema, the
+	 * `/loggedin/v1/settings` route and {@see self::sanitize()} all
+	 * read it. Call it from `init` on: the login modes are translated.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public function properties(): array {
+		$properties = array(
+			'maximum'            => array(
+				'type'    => 'integer',
+				'minimum' => 1,
+			),
+			'logic'              => array(
+				'type' => 'string',
+				'enum' => $this->logic_ids(),
+			),
+			'unlock'             => array( 'type' => 'boolean' ),
+			'exempt_admins'      => array( 'type' => 'boolean' ),
+			'password_signout'   => array( 'type' => 'boolean' ),
+			'message'            => array( 'type' => 'string' ),
+			'displaced_redirect' => array( 'type' => 'string' ),
+		);
+
+		/**
+		 * Filter the schema of each setting in `loggedin_settings`.
+		 *
+		 * An add-on storing its own key in Loggedin's option adds its
+		 * schema here and its default through
+		 * `loggedin_settings_defaults`. The key is then accepted by both
+		 * REST routes and stored by {@see Settings::sanitize()}, which
+		 * sanitises it against this schema. Built-in keys can't be
+		 * replaced: they keep their own sanitising.
+		 *
+		 * @since 3.4.0
+		 *
+		 * @param array<string, array<string, mixed>> $properties JSON schema keyed by setting id.
+		 */
+		$filtered = (array) apply_filters( 'loggedin_settings_properties', $properties );
+
+		return array_merge( $filtered, $properties );
 	}
 
 	/**
@@ -383,9 +421,12 @@ final class Settings {
 	 * `update()` so any write path produces the same shape.
 	 *
 	 * Unknown keys are silently dropped; known keys are coerced to
-	 * the expected type and clamped to the allowed range.
+	 * the expected type and clamped to the allowed range. A key added
+	 * through `loggedin_settings_properties` is sanitised against its
+	 * schema, and keeps its default when it doesn't validate.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Keeps keys added through `loggedin_settings_properties`.
 	 *
 	 * @param mixed $input Raw input.
 	 *
@@ -437,6 +478,40 @@ final class Settings {
 			$url = esc_url_raw( trim( (string) $input['displaced_redirect'] ), array( 'http', 'https' ) );
 
 			$out['displaced_redirect'] = '' === $url ? '' : wp_validate_redirect( $url, '' );
+		}
+
+		return $this->sanitize_added( $input, $out );
+	}
+
+	/**
+	 * Sanitise the keys add-ons declared, against their schema.
+	 *
+	 * Skips the schema entirely when the payload holds only built-in
+	 * keys, the usual case, so a save doesn't build the translated
+	 * mode list for nothing.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param array<string, mixed> $input Raw input.
+	 * @param array<string, mixed> $out   Sanitised built-in keys.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function sanitize_added( array $input, array $out ): array {
+		$added = array_diff_key( $input, array_flip( self::BUILT_IN_KEYS ) );
+
+		if ( empty( $added ) ) {
+			return $out;
+		}
+
+		$properties = $this->properties();
+
+		foreach ( $added as $key => $value ) {
+			if ( ! isset( $properties[ $key ] ) || true !== rest_validate_value_from_schema( $value, $properties[ $key ], (string) $key ) ) {
+				continue;
+			}
+
+			$out[ $key ] = rest_sanitize_value_from_schema( $value, $properties[ $key ], (string) $key );
 		}
 
 		return $out;

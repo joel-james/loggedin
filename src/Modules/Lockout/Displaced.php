@@ -19,6 +19,7 @@
  * (logging out, a password change, an admin's force logout) never
  * shows this message.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\Lockout
  */
 
@@ -249,9 +250,14 @@ final class Displaced {
 	 * @return void
 	 */
 	public function maybe_redirect(): void {
-		$url = (string) $this->settings->get( 'displaced_redirect', '' );
+		// The cookie first: it is missing on almost every request, and
+		// reading the settings costs more.
+		if ( ! $this->is_marked() || is_user_logged_in() ) {
+			return;
+		}
 
-		if ( '' === $url || ! $this->is_marked() || is_user_logged_in() ) {
+		$url = (string) $this->settings->get( 'displaced_redirect', '' );
+		if ( '' === $url ) {
 			return;
 		}
 

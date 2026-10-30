@@ -8,25 +8,24 @@
  *     when the configured logic is `block` and the user is already at
  *     their limit.
  *
- *   - `check_password` (later, after the user has been identified
- *     and their password verified): used to make room for the new
- *     session when the logic is `allow` (destroy every other
- *     session) or `logout_oldest` (destroy only the single oldest
- *     session).
+ *   - `attach_session_information` (as a session is created): used to
+ *     make room for the new session when the logic is `allow` (end
+ *     every other session) or `logout_oldest` (end only the oldest).
+ *     Every login that creates a session passes through it, including
+ *     social login, magic link and popup login plugins that call
+ *     `wp_set_auth_cookie()` directly. Block New can't refuse a login
+ *     at this point, so those logins aren't limited under Block New.
  *
- * A third point covers logins that never pass through `authenticate`:
+ * Before 3.4.0 room was made on `check_password`. That filter runs on
+ * every password check, not only on logins: WooCommerce's "current
+ * password" field, application passwords before WordPress 6.8, and a
+ * 2FA plugin's first step all ended sessions with no new one to follow.
  *
- *   - `attach_session_information` (as a session is created): social
- *     login, magic link and popup login plugins call
- *     `wp_set_auth_cookie()` directly, so neither check above runs.
- *     Logout Oldest and Logout All are enforced here too. Block New
- *     can't refuse a login at this point, so those logins aren't
- *     limited under Block New.
- *
- * All three consult {@see Settings\Settings} for the current limit and
- * mode, and all honour the `loggedin_bypass` filter so an addon can
+ * Both consult {@see Settings\Settings} for the current limit and
+ * mode, and both honour the `loggedin_bypass` filter so an addon can
  * exempt a specific user or role without forking this class.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Sessions
  */
 
@@ -82,26 +81,21 @@ final class SessionGuard {
 	/**
 	 * Register hooks.
 	 *
-	 * Filter priorities are intentionally the WP default (10) — we
-	 * don't need to outrun other filters on these hooks, but we do
-	 * need to run *after* WordPress itself decides whether the
-	 * password matches, so we can be sure the user identity is
-	 * settled before we touch sessions.
+	 * Default priorities: neither filter needs to run before others.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 No longer hooks `check_password`; see the file header.
 	 */
 	public function register(): void {
 		add_filter( 'wp_authenticate_user', array( $this, 'validate_block_logic' ), 10, 2 );
-		add_filter( 'check_password', array( $this, 'validate_allow_logic' ), 10, 4 );
 		add_filter( 'attach_session_information', array( $this, 'enforce_on_create' ), 10, 2 );
 	}
 
 	/**
-	 * Make room as a session is created, for logins that skip `authenticate`.
+	 * Make room as a session is created.
 	 *
-	 * Runs for every new session. A login through the login form
-	 * already made room in {@see self::validate_allow_logic()}, so the
-	 * user is normally under the limit by now and nothing more ends.
+	 * Runs for every new session, before it is stored, so the count
+	 * {@see self::make_room()} reads doesn't include it yet.
 	 *
 	 * @since 3.4.0
 	 *
@@ -117,16 +111,14 @@ final class SessionGuard {
 	}
 
 	/**
-	 * Enforce `allow` and `logout_oldest` modes after password check.
+	 * Enforce `allow` and `logout_oldest` modes after a password check.
 	 *
-	 * `check_password` is a `bool` filter — returning `false` aborts
-	 * the login. We never want to abort here (that's the job of the
-	 * block-mode branch on `wp_authenticate_user`), so we always
-	 * return `true`. The work in this method is destructive only:
-	 * destroying existing sessions to make room for the one about
-	 * to be created.
+	 * No longer hooked: {@see self::enforce_on_create()} makes room as
+	 * the session is created instead. Kept, with its `check_password`
+	 * signature, for code that calls it directly.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Not hooked to `check_password`.
 	 *
 	 * @param bool   $check    Existing check state.
 	 * @param string $password Plaintext password (unused).
@@ -230,10 +222,9 @@ final class SessionGuard {
 	/**
 	 * Destroy every active session for the user.
 	 *
-	 * Delegates to {@see WP_Session_Tokens::destroy_all()} so the
-	 * configured session storage (user-meta by default, but pluggable
-	 * via the `session_token_manager` filter) handles the actual
-	 * deletion.
+	 * Notes the sessions for {@see self::displacing()} first, then ends
+	 * them through {@see SessionStore::end_all()}, which works with any
+	 * storage backend.
 	 *
 	 * @since 3.0.0
 	 *
@@ -244,16 +235,7 @@ final class SessionGuard {
 	protected function destroy_all_sessions( int $user_id ): void {
 		$this->displacing( $user_id, $this->store->verifiers( $user_id ) );
 
-		WP_Session_Tokens::get_instance( $user_id )->destroy_all();
-
-		/**
-		 * Fires after every session is destroyed for a user.
-		 *
-		 * @since 2.0.0
-		 *
-		 * @param int $user_id User id whose sessions were cleared.
-		 */
-		do_action( 'loggedin_destroy_all_sessions', $user_id );
+		$this->store->end_all( $user_id );
 	}
 
 	/**

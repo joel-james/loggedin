@@ -18,6 +18,7 @@
  * {@see Assets} — so this file doesn't have to know how the bundle
  * is built or what dependencies it declares.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Admin
  */
 
@@ -26,8 +27,8 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Admin;
 
 use FoxeLabs\Loggedin\Plugin;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
 use FoxeLabs\Reviews\Notice as Review_Notice;
-use WP_Session_Tokens;
 
 defined( 'WPINC' ) || die;
 
@@ -37,6 +38,36 @@ defined( 'WPINC' ) || die;
  * @since 3.0.0
  */
 final class Admin {
+
+	/**
+	 * Screen id of Loggedin's admin page.
+	 *
+	 * What `add_users_page()` returns for the `loggedin` slug, and
+	 * the screen id WordPress gives the page.
+	 *
+	 * @since 3.4.0
+	 */
+	public const SCREEN = 'users_page_loggedin';
+
+	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param SessionStore $store Session store.
+	 */
+	public function __construct( SessionStore $store ) {
+		$this->store = $store;
+	}
 
 	/**
 	 * Register hooks.
@@ -53,7 +84,7 @@ final class Admin {
 			array(
 				'days'    => 7,
 				'domain'  => 'loggedin',
-				'screens' => array( 'users_page_' . Plugin::SLUG ),
+				'screens' => array( self::SCREEN ),
 			)
 		)->register();
 	}
@@ -91,10 +122,7 @@ final class Admin {
 		$user = get_userdata( (int) $_REQUEST['loggedin_user'] );
 
 		if ( $user ) {
-			WP_Session_Tokens::get_instance( $user->ID )->destroy_all();
-
-			/** This action is documented in src/Rest/SessionsEndpoint.php */
-			do_action( 'loggedin_destroy_all_sessions', $user->ID );
+			$this->store->end_all( $user->ID );
 
 			add_settings_error(
 				'general',

@@ -246,14 +246,20 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * New: Logout Oldest and Logout All now also apply to logins that skip the login form (social login, magic links, popup logins).
 * New: Add-ons can add pages, cards and fields from PHP with the `loggedin_settings_schema` filter.
 * New: `loggedin_sessions_displacing` action before Logout All or Logout Oldest ends sessions, and `loggedin_uninstalled` after the plugin is deleted.
+* New: `loggedin_settings_properties` filter, so an add-on's own key in Loggedin's settings is saved, and `loggedin_session_device` to name the devices in a user's session list.
 * New: A notice lists add-ons that need an update for the new settings screen.
 * Improve: Block New checks the password first. A wrong password gets WordPress's usual error, not the limit message.
 * Improve: Add-ons built for the old screen keep working, and links from before 3.4.0 still open the right page.
 * Improve: `wp loggedin settings set` accepts true/false, yes/no, on/off or 1/0 for on/off settings.
 * Improve: Keyboard and screen reader fixes on the settings screen and the profile's sign-out buttons.
 * Improve: Login modes added by other plugins through `loggedin_logics` can be saved.
+* Improve: `loggedin_destroy_all_sessions` now fires for every way a user is signed out everywhere, including the Users screen, a password change and the unlock email.
+* Improve: `POST /loggedin/v1/settings` accepts every setting, not only the limit and the login mode.
+* Improve: Fewer database queries on each page: settings that are often unset are stored so they load with the rest, and pages that don't sign anyone in no longer load the translations to check a setting.
+* Fix: Checking a password without signing in, such as WooCommerce's "current password" field, an application password, or the first step of two-factor login, no longer signs the user out of their other devices under Logout All or Logout Oldest.
 * Fix: The old force-logout link now also checks that the user can manage options.
 * Fix: Logout Oldest skips sessions that already expired, and ends as many as needed when the limit was lowered.
+* Fix: `wp loggedin sessions list` no longer shows leftover sessions on a site that stores sessions elsewhere, such as Redis.
 * Fix: Deleting the plugin now also removes the review notice's settings, and on multisite removes Loggedin's settings from every site.
 * Changed: Requires WordPress 6.5.
 * Changed: Force Logout moved to Manage › Sessions, and Support is now Help.

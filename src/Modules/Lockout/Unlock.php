@@ -17,6 +17,7 @@
  * random, single-use, valid for 15 minutes and stored only as a hash,
  * in its own user meta row (never in `session_tokens`).
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\Lockout
  */
 
@@ -25,8 +26,8 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Modules\Lockout;
 
 use FoxeLabs\Loggedin\Sessions\SessionGuard;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
 use FoxeLabs\Loggedin\Settings\Settings;
-use WP_Session_Tokens;
 use WP_User;
 
 defined( 'WPINC' ) || die;
@@ -90,14 +91,25 @@ final class Unlock {
 	private Settings $settings;
 
 	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
 	 * Set up the dependencies.
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param Settings $settings Settings store.
+	 * @param Settings     $settings Settings store.
+	 * @param SessionStore $store    Session store.
 	 */
-	public function __construct( Settings $settings ) {
+	public function __construct( Settings $settings, SessionStore $store ) {
 		$this->settings = $settings;
+		$this->store    = $store;
 	}
 
 	/**
@@ -208,7 +220,7 @@ final class Unlock {
 			$this->finish( 'invalid' );
 		}
 
-		WP_Session_Tokens::get_instance( $user_id )->destroy_all();
+		$this->store->end_all( $user_id );
 
 		/**
 		 * Fires after a user signs out of every device from the

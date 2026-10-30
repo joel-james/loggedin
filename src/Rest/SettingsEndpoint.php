@@ -12,10 +12,11 @@
  *     instead of the generic site-settings endpoint.
  *   - CLI / cURL recipes in our docs.
  *
- * The route mirrors the schema declared in
- * {@see \FoxeLabs\Loggedin\Settings\Settings::register_option()} so both entry
- * points behave identically.
+ * The route takes the same schema as the option,
+ * {@see \FoxeLabs\Loggedin\Settings\Settings::properties()}, so both entry
+ * points accept the same keys.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Rest
  */
 
@@ -58,15 +59,6 @@ final class SettingsEndpoint extends Endpoint {
 	}
 
 	/**
-	 * Register hooks.
-	 *
-	 * @since 3.0.0
-	 */
-	public function register(): void {
-		$this->hook();
-	}
-
-	/**
 	 * Register the `/settings` route — GET to read, POST to write.
 	 *
 	 * @since 3.0.0
@@ -87,16 +79,7 @@ final class SettingsEndpoint extends Endpoint {
 					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => array( $this, 'update_settings' ),
 					'permission_callback' => array( $this, 'permission_check' ),
-					'args'                => array(
-						'maximum' => array(
-							'type'    => 'integer',
-							'minimum' => 1,
-						),
-						'logic'   => array(
-							'type' => 'string',
-							'enum' => $this->settings->logic_ids(),
-						),
-					),
+					'args'                => $this->settings->properties(),
 				),
 			)
 		);
@@ -120,40 +103,25 @@ final class SettingsEndpoint extends Endpoint {
 	/**
 	 * POST handler — write a partial payload, return the result.
 	 *
-	 * Reads each accepted key from the request, falling back to the
-	 * currently-stored value for any key not present in the payload.
-	 * This makes the endpoint behave as a true PATCH even though
-	 * `WP_REST_Server::EDITABLE` accepts POST / PUT / PATCH alike.
-	 *
-	 * Sanitization is delegated to the Settings store so the schema
-	 * is enforced in exactly one place.
+	 * Only the keys sent are written; {@see Settings::update()} keeps
+	 * the stored value of every other key, so the route behaves as a
+	 * PATCH even though `WP_REST_Server::EDITABLE` accepts POST, PUT
+	 * and PATCH alike. Sanitising is left to the settings store, so
+	 * it happens in one place.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Takes every key in the settings schema, not only
+	 *              `maximum` and `logic`.
 	 *
 	 * @param WP_REST_Request $request Incoming request.
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function update_settings( WP_REST_Request $request ): WP_REST_Response {
-		$store   = $this->settings;
-		$current = $store->all();
+		$values = array_intersect_key( $request->get_params(), $this->settings->properties() );
 
-		// Start from what is stored, so keys this route doesn't take
-		// (`unlock`, `exempt_admins`, …) keep their values.
-		$payload = array_merge(
-			$current,
-			array(
-				'maximum' => $request->offsetExists( 'maximum' )
-					? (int) $request->get_param( 'maximum' )
-					: $current['maximum'],
-				'logic'   => $request->offsetExists( 'logic' )
-					? (string) $request->get_param( 'logic' )
-					: $current['logic'],
-			)
-		);
+		$this->settings->update( $values );
 
-		$store->update( $payload );
-
-		return new WP_REST_Response( $store->all(), 200 );
+		return new WP_REST_Response( $this->settings->all(), 200 );
 	}
 }

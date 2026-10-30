@@ -13,6 +13,7 @@
  *  - {@see self::ROLE_OPTION_KEY} — an open `{ role: minutes }` map,
  *    whose keys aren't knowable at schema-declaration time.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\AutoLogout
  */
 
@@ -84,6 +85,21 @@ final class Settings {
 	 * @since 3.4.0
 	 */
 	public const MAX_WARNING = 3600;
+
+	/**
+	 * Largest value of each scalar setting. Every one starts at zero.
+	 *
+	 * The one list the schema, {@see self::clamp()} and the settings
+	 * screen's field limits read.
+	 *
+	 * @since 3.4.0
+	 */
+	public const BOUNDS = array(
+		'idle_timeout'      => self::MAX_IDLE_TIMEOUT,
+		'warning'           => self::MAX_WARNING,
+		'session_lifetime'  => self::MAX_SESSION_LIFETIME,
+		'remember_lifetime' => self::MAX_REMEMBER_LIFETIME,
+	);
 
 	/**
 	 * Register hooks.
@@ -229,27 +245,15 @@ final class Settings {
 					'schema' => array(
 						'type'                 => 'object',
 						'additionalProperties' => false,
-						'properties'           => array(
-							'idle_timeout'      => array(
-								'type'    => 'integer',
-								'minimum' => 0,
-								'maximum' => self::MAX_IDLE_TIMEOUT,
-							),
-							'warning'           => array(
-								'type'    => 'integer',
-								'minimum' => 0,
-								'maximum' => self::MAX_WARNING,
-							),
-							'session_lifetime'  => array(
-								'type'    => 'integer',
-								'minimum' => 0,
-								'maximum' => self::MAX_SESSION_LIFETIME,
-							),
-							'remember_lifetime' => array(
-								'type'    => 'integer',
-								'minimum' => 0,
-								'maximum' => self::MAX_REMEMBER_LIFETIME,
-							),
+						'properties'           => array_map(
+							static function ( int $max ): array {
+								return array(
+									'type'    => 'integer',
+									'minimum' => 0,
+									'maximum' => $max,
+								);
+							},
+							self::BOUNDS
 						),
 					),
 				),
@@ -360,15 +364,8 @@ final class Settings {
 	 * @return array{idle_timeout: int, warning: int, session_lifetime: int, remember_lifetime: int}
 	 */
 	private function clamp( array $settings ): array {
-		$bounds = array(
-			'idle_timeout'      => self::MAX_IDLE_TIMEOUT,
-			'warning'           => self::MAX_WARNING,
-			'session_lifetime'  => self::MAX_SESSION_LIFETIME,
-			'remember_lifetime' => self::MAX_REMEMBER_LIFETIME,
-		);
-
 		$clean = array();
-		foreach ( $bounds as $key => $max ) {
+		foreach ( self::BOUNDS as $key => $max ) {
 			$clean[ $key ] = min( $max, max( 0, (int) ( $settings[ $key ] ?? 0 ) ) );
 		}
 

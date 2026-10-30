@@ -11,7 +11,8 @@
  *
  * Cost profile:
  *   - Triggering: one autoloaded option write. O(1) at any user count.
- *   - Per request: one option read (autoloaded, so free) and — only for
+ *   - Per request: one option read, free because it is autoloaded (the
+ *     upgrader stores it before the first use) and — only for
  *     logged-in visitors while an epoch is set — one session lookup that
  *     WordPress performs anyway later in the request.
  *
@@ -23,6 +24,7 @@
  * Works with custom session storage backends too — everything goes
  * through the `WP_Session_Tokens` API, never the raw meta row.
  *
+ * @since 3.3.0
  * @package FoxeLabs\Loggedin\Sessions
  */
 

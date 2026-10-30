@@ -45,7 +45,7 @@ class SessionStoreTest extends WP_UnitTestCase {
 		$manager = WP_Session_Tokens::get_instance( $this->user_id );
 		$manager->create( time() + HOUR_IN_SECONDS );
 
-		$sessions = get_user_meta( $this->user_id, 'session_tokens', true );
+		$sessions            = get_user_meta( $this->user_id, 'session_tokens', true );
 		$sessions['expired'] = array(
 			'expiration' => time() - 1,
 			'login'      => time() - HOUR_IN_SECONDS,
@@ -91,5 +91,49 @@ class SessionStoreTest extends WP_UnitTestCase {
 			'android'     => array( 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36', 'Chrome on Android' ),
 			'unknown'     => array( '', 'Unknown device' ),
 		);
+	}
+
+	public function test_ending_every_session_fires_the_hook(): void {
+		WP_Session_Tokens::get_instance( $this->user_id )->create( time() + HOUR_IN_SECONDS );
+		$fired = array();
+		add_action(
+			'loggedin_destroy_all_sessions',
+			static function ( $user_id ) use ( &$fired ) {
+				$fired[] = $user_id;
+			}
+		);
+
+		Plugin::instance()->session_store()->end_all( $this->user_id );
+
+		$this->assertSame( array( $this->user_id ), $fired );
+		$this->assertCount( 0, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
+	}
+
+	public function test_ending_your_own_sessions_can_keep_this_one(): void {
+		$manager = WP_Session_Tokens::get_instance( $this->user_id );
+		$current = $manager->create( time() + HOUR_IN_SECONDS );
+		$manager->create( time() + HOUR_IN_SECONDS );
+
+		wp_set_current_user( $this->user_id );
+		$_COOKIE[ LOGGED_IN_COOKIE ] = wp_generate_auth_cookie( $this->user_id, time() + HOUR_IN_SECONDS, 'logged_in', $current );
+
+		Plugin::instance()->session_store()->end_all( $this->user_id, true );
+
+		unset( $_COOKIE[ LOGGED_IN_COOKIE ] );
+		$this->assertNotNull( $manager->get( $current ) );
+		$this->assertCount( 1, $manager->get_all() );
+	}
+
+	public function test_a_site_can_name_devices_itself(): void {
+		add_filter(
+			'loggedin_session_device',
+			static function ( $name, $ua ) {
+				return 'ua:' . $ua;
+			},
+			10,
+			2
+		);
+
+		$this->assertSame( 'ua:Agent/1.0', Plugin::instance()->session_store()->device( 'Agent/1.0' ) );
 	}
 }

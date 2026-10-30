@@ -17,6 +17,7 @@
  * {@see \FoxeLabs\Loggedin\Addons\Catalog} and
  * {@see \FoxeLabs\Loggedin\Addons\Addons}.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Rest
  */
 
@@ -69,15 +70,6 @@ final class AddonsEndpoint extends Endpoint {
 	public function __construct( Addons $addons, Catalog $catalog ) {
 		$this->addons  = $addons;
 		$this->catalog = $catalog;
-	}
-
-	/**
-	 * Register hooks.
-	 *
-	 * @since 3.0.0
-	 */
-	public function register(): void {
-		$this->hook();
 	}
 
 	/**

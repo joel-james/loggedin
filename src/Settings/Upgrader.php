@@ -4,15 +4,16 @@
  *
  * Runs once per version bump on the next request after an update,
  * performing any data migrations needed to keep stored state in sync
- * with the current schema. Today there's one migration — the move
- * from the pre-3.0 single-key options to the unified
- * `loggedin_settings` array — but new versions can append their own
- * branches inside `maybe_upgrade()` without touching anything else.
+ * with the current schema: the pre-3.0 single-key options, the review
+ * notice and Freemius keys renamed by their libraries, and the 3.4.0
+ * defaults an upgraded site keeps off. A new version appends its own
+ * step inside `maybe_upgrade()`.
  *
  * The version stamp lives in its own option (`loggedin_version`) so
  * we don't have to dig through the main settings array to detect a
  * version change.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Settings
  */
 
@@ -22,7 +23,9 @@ namespace FoxeLabs\Loggedin\Settings;
 
 use FoxeLabs\Freemius\Storage\ActivationRepository;
 use FoxeLabs\Loggedin\Admin\ExemptAdminsNotice;
+use FoxeLabs\Loggedin\Modules\AutoLogout\Settings as AutoLogoutSettings;
 use FoxeLabs\Loggedin\Plugin;
+use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
 
 defined( 'WPINC' ) || die;
 
@@ -91,6 +94,8 @@ final class Upgrader {
 		if ( $is_upgrade && ( '' === $stored || version_compare( $stored, '3.4.0', '<' ) ) ) {
 			$this->keep_pre_340_behaviour();
 		}
+
+		$this->autoload_options();
 
 		update_option( Plugin::VERSION_KEY, Plugin::VERSION );
 	}
@@ -248,7 +253,14 @@ final class Upgrader {
 			return;
 		}
 
-		$settings = $this->settings->defaults();
+		// The two values 2.x had, and the 3.4.0 additions off: a site
+		// with legacy options is always an upgrade. Not the full
+		// defaults, which would switch those additions on before
+		// `keep_pre_340_behaviour()` reads the stored value.
+		$settings = array(
+			'unlock'        => false,
+			'exempt_admins' => false,
+		);
 
 		if ( null !== $legacy_max ) {
 			$settings['maximum'] = max( 1, (int) $legacy_max );
@@ -256,7 +268,7 @@ final class Upgrader {
 
 		if (
 			null !== $legacy_logic &&
-			in_array( $legacy_logic, array( 'allow', 'logout_oldest', 'block' ), true )
+			in_array( $legacy_logic, Settings::BUILT_IN_LOGICS, true )
 		) {
 			$settings['logic'] = (string) $legacy_logic;
 		}
@@ -296,7 +308,35 @@ final class Upgrader {
 		update_option( Plugin::OPTION_KEY, $settings );
 
 		if ( ! $settings['exempt_admins'] ) {
-			update_option( ExemptAdminsNotice::OPTION, 1, false );
+			update_option( ExemptAdminsNotice::OPTION, 1, true );
 		}
+	}
+
+	/**
+	 * Store the options read on every request, so they autoload.
+	 *
+	 * Without a persistent object cache, reading an option that was
+	 * never stored costs a query on every request: WordPress only
+	 * remembers a missing option until the request ends. These are
+	 * read on every signed-in request (the logout epoch, the auto
+	 * logout timeouts), on every admin screen (the notice flag) or on
+	 * every page that checks a setting, and stay unset on most sites
+	 * until an admin acts. Storing their empty value puts them in the
+	 * autoloaded set. `add_option()` leaves an existing value alone.
+	 *
+	 * The auto logout keys are read by its module; they are listed
+	 * here for the same reason the {@see \FoxeLabs\Loggedin\Uninstaller}
+	 * lists them: only core knows when the plugin is installed.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	protected function autoload_options(): void {
+		add_option( Plugin::OPTION_KEY, array(), '', true );
+		add_option( LogoutEpoch::OPTION, 0, '', true );
+		add_option( ExemptAdminsNotice::OPTION, 0, '', true );
+		add_option( AutoLogoutSettings::OPTION_KEY, array(), '', true );
+		add_option( AutoLogoutSettings::ROLE_OPTION_KEY, array(), '', true );
 	}
 }

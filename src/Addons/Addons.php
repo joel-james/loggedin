@@ -14,6 +14,7 @@
  * shaped catalogue lives in {@see Catalog}. This class is the only
  * place that talks to the SDK directly.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Addons
  */
 
@@ -37,7 +38,9 @@ final class Addons {
 	/**
 	 * Cache of Freemius SDK instances keyed by plugin / addon id.
 	 *
-	 * @var Freemius[]
+	 * @since 3.0.0
+	 *
+	 * @var array<int, Freemius>
 	 */
 	protected array $freemius = array();
 
@@ -150,20 +153,6 @@ final class Addons {
 	}
 
 	/**
-	 * Public accessor for the registered-addons filter result.
-	 *
-	 * The {@see Catalog} service needs this map to decide whether
-	 * each catalogue row is locally installed + registered.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @return array<int, array<string, mixed>>
-	 */
-	public function get_registered_addons_public(): array {
-		return $this->get_registered_addons();
-	}
-
-	/**
 	 * Activate a license key for the given addon.
 	 *
 	 * Delegates to the addon's Freemius client and returns whatever
@@ -262,11 +251,15 @@ final class Addons {
 	/**
 	 * List of addons registered by sibling addon plugins.
 	 *
+	 * Not memoized: add-ons register on this filter as their main file
+	 * loads, and a cached copy taken earlier would miss later ones.
+	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Public, replacing `get_registered_addons_public()`.
 	 *
 	 * @return array<int, array<string, mixed>> Addons keyed by Freemius id.
 	 */
-	protected function get_registered_addons(): array {
+	public function get_registered_addons(): array {
 		/**
 		 * Filter the list of registered addons.
 		 *

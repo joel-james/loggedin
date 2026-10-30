@@ -12,6 +12,7 @@
  * next to WordPress's own "Log Out Everywhere". Seeing another user's
  * devices one by one belongs to the Active Sessions add-on.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\UserSessions
  */
 
@@ -116,34 +117,53 @@ final class ProfileSessions {
 		echo '<th scope="col"><span class="screen-reader-text">' . esc_html__( 'Actions', 'loggedin' ) . '</span></th>';
 		echo '</tr></thead><tbody>';
 
+		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+
 		foreach ( $sessions as $verifier => $session ) {
-			$login  = (int) ( $session['login'] ?? 0 );
-			$ip     = (string) ( $session['ip'] ?? '' );
-			$device = $store->device( (string) ( $session['ua'] ?? '' ) );
-
-			echo '<tr>';
-			echo '<td>' . esc_html( $device ) . '</td>';
-			echo '<td>' . esc_html( '' !== $ip ? (string) wp_privacy_anonymize_ip( $ip ) : '—' ) . '</td>';
-			echo '<td>' . ( $login ? '<time datetime="' . esc_attr( gmdate( 'c', $login ) ) . '" title="' . esc_attr( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $login ) ) . '">' . esc_html( $this->ago( $login ) ) . '</time>' : '—' ) . '</td>';
-			echo '<td style="text-align:end">';
-
-			if ( $verifier === $current ) {
-				echo '<strong>' . esc_html__( 'This device', 'loggedin' ) . '</strong>';
-			} else {
-				// Every row's button says "Sign out"; the label names the device for screen readers.
-				printf(
-					'<a class="button button-small" href="%1$s" aria-label="%2$s">%3$s</a>',
-					esc_url( $this->end_url( (string) $verifier ) ),
-					/* translators: 1: Device, such as "Chrome on macOS". 2: How long ago it signed in. */
-					esc_attr( sprintf( __( 'Sign out %1$s, signed in %2$s', 'loggedin' ), $device, $login ? $this->ago( $login ) : '—' ) ),
-					esc_html__( 'Sign out', 'loggedin' )
-				);
-			}
-
-			echo '</td></tr>';
+			$this->row( (string) $verifier, $session, $verifier === $current, $date_format );
 		}
 
 		echo '</tbody></table>';
+	}
+
+	/**
+	 * Print one row of the sessions table.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string               $verifier    Session verifier.
+	 * @param array<string, mixed> $session     Session data: `login`, `ip`, `ua`.
+	 * @param bool                 $is_current  Whether it is the session viewing the page.
+	 * @param string               $date_format Date and time format for the full date.
+	 *
+	 * @return void
+	 */
+	private function row( string $verifier, array $session, bool $is_current, string $date_format ): void {
+		$login  = (int) ( $session['login'] ?? 0 );
+		$ip     = (string) ( $session['ip'] ?? '' );
+		$device = $this->store->device( (string) ( $session['ua'] ?? '' ) );
+		$ago    = $login ? $this->ago( $login ) : '—';
+
+		echo '<tr>';
+		echo '<td>' . esc_html( $device ) . '</td>';
+		echo '<td>' . esc_html( '' !== $ip ? (string) wp_privacy_anonymize_ip( $ip ) : '—' ) . '</td>';
+		echo '<td>' . ( $login ? '<time datetime="' . esc_attr( gmdate( 'c', $login ) ) . '" title="' . esc_attr( wp_date( $date_format, $login ) ) . '">' . esc_html( $ago ) . '</time>' : '—' ) . '</td>';
+		echo '<td style="text-align:end">';
+
+		if ( $is_current ) {
+			echo '<strong>' . esc_html__( 'This device', 'loggedin' ) . '</strong>';
+		} else {
+			// Every row's button says "Sign out"; the label names the device for screen readers.
+			printf(
+				'<a class="button button-small" href="%1$s" aria-label="%2$s">%3$s</a>',
+				esc_url( $this->end_url( $verifier ) ),
+				/* translators: 1: Device, such as "Chrome on macOS". 2: How long ago it signed in. */
+				esc_attr( sprintf( __( 'Sign out %1$s, signed in %2$s', 'loggedin' ), $device, $ago ) ),
+				esc_html__( 'Sign out', 'loggedin' )
+			);
+		}
+
+		echo '</td></tr>';
 	}
 
 	/**
@@ -188,14 +208,7 @@ final class ProfileSessions {
 		}
 
 		if ( $ended ) {
-			/**
-			 * Fires after a user signs one of their devices out from their profile.
-			 *
-			 * @since 3.4.0
-			 *
-			 * @param int    $user_id  User id.
-			 * @param string $verifier Verifier of the session that ended.
-			 */
+			/** This action is documented in src/Cli/SessionsCommand.php */
 			do_action( 'loggedin_destroy_session', $user_id, (string) $verifier );
 		}
 

@@ -2,6 +2,7 @@
 /**
  * Auto logout: idle logout and session length.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\AutoLogout
  */
 
@@ -10,6 +11,7 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Modules\AutoLogout;
 
 use FoxeLabs\Loggedin\Modules\Module;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
 
 defined( 'WPINC' ) || die;
 
@@ -54,10 +56,12 @@ final class AutoLogout implements Module {
 	 * Build the module's parts.
 	 *
 	 * @since 3.4.0
+	 *
+	 * @param SessionStore $store Session store.
 	 */
-	public function __construct() {
+	public function __construct( SessionStore $store ) {
 		$this->settings   = new Settings();
-		$this->idle_guard = new IdleGuard( $this->settings );
+		$this->idle_guard = new IdleGuard( $this->settings, $store );
 		$this->lifetime   = new Lifetime( $this->settings );
 	}
 
@@ -87,14 +91,7 @@ final class AutoLogout implements Module {
 	 */
 	public function script_vars( $vars ): array {
 		$vars               = (array) $vars;
-		$vars['autoLogout'] = array(
-			'max' => array(
-				'idle_timeout'      => Settings::MAX_IDLE_TIMEOUT,
-				'warning'           => Settings::MAX_WARNING,
-				'session_lifetime'  => Settings::MAX_SESSION_LIFETIME,
-				'remember_lifetime' => Settings::MAX_REMEMBER_LIFETIME,
-			),
-		);
+		$vars['autoLogout'] = array( 'max' => Settings::BOUNDS );
 
 		return $vars;
 	}

@@ -12,6 +12,7 @@ namespace FoxeLabs\Loggedin\Tests\Settings;
 use FoxeLabs\Loggedin\Admin\ExemptAdminsNotice;
 use FoxeLabs\Loggedin\Plugin;
 use WP_REST_Request;
+use FoxeLabs\Loggedin\Sessions\LogoutEpoch;
 use WP_UnitTestCase;
 
 
@@ -26,6 +27,8 @@ class SettingsTest extends WP_UnitTestCase {
 		delete_option( 'loggedin_logic' );
 		delete_option( ExemptAdminsNotice::OPTION );
 		remove_all_filters( 'loggedin_logics' );
+		remove_all_filters( 'loggedin_settings_defaults' );
+		remove_all_filters( 'loggedin_settings_properties' );
 		Plugin::instance()->settings()->flush();
 		Plugin::instance()->settings()->register_option();
 
@@ -76,8 +79,8 @@ class SettingsTest extends WP_UnitTestCase {
 		$settings = Plugin::instance()->settings();
 		$settings->flush();
 
-		$calls    = 0;
-		$counter  = function ( $defaults ) use ( &$calls ) {
+		$calls   = 0;
+		$counter = function ( $defaults ) use ( &$calls ) {
 			++$calls;
 
 			return $defaults;
@@ -196,7 +199,7 @@ class SettingsTest extends WP_UnitTestCase {
 		Plugin::instance()->settings()->update( array( 'exempt_admins' => true ) );
 
 		$this->assertFalse( Plugin::instance()->exempt_admins_notice()->is_due() );
-		$this->assertFalse( get_option( ExemptAdminsNotice::OPTION ) );
+		$this->assertEmpty( get_option( ExemptAdminsNotice::OPTION ) );
 	}
 
 	public function test_a_new_install_gets_no_suggestion(): void {
@@ -297,5 +300,70 @@ class SettingsTest extends WP_UnitTestCase {
 		Plugin::instance()->settings()->update( array( 'logic' => 'block' ) );
 
 		$this->assertSame( 'block', Plugin::instance()->settings()->get( 'logic' ) );
+	}
+
+	public function test_an_upgrade_from_2x_keeps_the_old_behaviour(): void {
+		delete_option( Plugin::VERSION_KEY );
+		delete_option( Plugin::OPTION_KEY );
+		update_option( 'loggedin_maximum', 3 );
+		update_option( 'loggedin_logic', 'block' );
+
+		Plugin::instance()->upgrader()->maybe_upgrade();
+
+		$stored = get_option( Plugin::OPTION_KEY );
+		$this->assertSame( 3, $stored['maximum'] );
+		$this->assertSame( 'block', $stored['logic'] );
+		$this->assertFalse( $stored['unlock'] );
+		$this->assertFalse( $stored['exempt_admins'] );
+	}
+
+	public function test_options_read_on_every_request_are_autoloaded(): void {
+		delete_option( Plugin::VERSION_KEY );
+		delete_option( LogoutEpoch::OPTION );
+
+		Plugin::instance()->upgrader()->maybe_upgrade();
+
+		$this->assertArrayHasKey( LogoutEpoch::OPTION, wp_load_alloptions() );
+		$this->assertArrayHasKey( ExemptAdminsNotice::OPTION, wp_load_alloptions() );
+	}
+
+	public function test_an_added_setting_round_trips(): void {
+		add_filter(
+			'loggedin_settings_defaults',
+			static function ( $defaults ) {
+				return $defaults + array( 'extra_limit' => 5 );
+			}
+		);
+		add_filter(
+			'loggedin_settings_properties',
+			static function ( $properties ) {
+				return $properties + array(
+					'extra_limit' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+					),
+				);
+			}
+		);
+		$settings = Plugin::instance()->settings();
+		$settings->flush();
+
+		$settings->update( array( 'extra_limit' => '7' ) );
+		$this->assertSame( 7, $settings->get( 'extra_limit' ) );
+
+		$settings->update( array( 'extra_limit' => 0 ) );
+		$this->assertSame( 5, $settings->get( 'extra_limit' ), 'An invalid value falls back to the default.' );
+	}
+
+	public function test_an_added_setting_cannot_replace_a_built_in_one(): void {
+		add_filter(
+			'loggedin_settings_properties',
+			static function ( $properties ) {
+				$properties['maximum'] = array( 'type' => 'string' );
+				return $properties;
+			}
+		);
+
+		$this->assertSame( 'integer', Plugin::instance()->settings()->properties()['maximum']['type'] );
 	}
 }

@@ -14,6 +14,7 @@
  * changes their own password keeps the session they did it from;
  * WordPress re-issues that session's cookie with the new password.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\PasswordSignout
  */
 
@@ -22,8 +23,8 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Modules\PasswordSignout;
 
 use FoxeLabs\Loggedin\Modules\Module;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
 use FoxeLabs\Loggedin\Settings\Settings;
-use WP_Session_Tokens;
 use WP_User;
 
 defined( 'WPINC' ) || die;
@@ -45,14 +46,25 @@ final class PasswordSignout implements Module {
 	private Settings $settings;
 
 	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
 	 * Set up the dependencies.
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param Settings $settings Settings store.
+	 * @param Settings     $settings Settings store.
+	 * @param SessionStore $store    Session store.
 	 */
-	public function __construct( Settings $settings ) {
+	public function __construct( Settings $settings, SessionStore $store ) {
 		$this->settings = $settings;
+		$this->store    = $store;
 	}
 
 	/**
@@ -121,14 +133,7 @@ final class PasswordSignout implements Module {
 			return;
 		}
 
-		$manager = WP_Session_Tokens::get_instance( $user_id );
-		$token   = get_current_user_id() === $user_id ? wp_get_session_token() : '';
-
-		if ( '' !== $token ) {
-			$manager->destroy_others( $token );
-		} else {
-			$manager->destroy_all();
-		}
+		$this->store->end_all( $user_id, true );
 
 		/**
 		 * Fires after a password change ended the user's other sessions.

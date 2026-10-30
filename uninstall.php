@@ -5,6 +5,7 @@
  * Fired by WordPress when the plugin is deleted from the Plugins
  * screen. See FoxeLabs\Loggedin\Uninstaller for what is removed.
  *
+ * @since 1.2.0
  * @package FoxeLabs\Loggedin
  */
 

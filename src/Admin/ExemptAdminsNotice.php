@@ -8,6 +8,7 @@
  * This notice tells such a site's admins the setting exists, once: it
  * goes away for good when someone turns the setting on or says no.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Admin
  */
 
@@ -15,7 +16,6 @@ declare( strict_types = 1 );
 
 namespace FoxeLabs\Loggedin\Admin;
 
-use FoxeLabs\Loggedin\Plugin;
 use FoxeLabs\Loggedin\Settings\Settings;
 
 defined( 'WPINC' ) || die;
@@ -29,6 +29,10 @@ final class ExemptAdminsNotice {
 
 	/**
 	 * Option set by the Upgrader while the notice is due.
+	 *
+	 * `1` while due, `0` once answered. Kept (rather than deleted) and
+	 * autoloaded, because {@see self::register()} reads it on every
+	 * admin request.
 	 *
 	 * @since 3.4.0
 	 */
@@ -99,7 +103,7 @@ final class ExemptAdminsNotice {
 		}
 
 		if ( $this->settings->get( 'exempt_admins', false ) ) {
-			delete_option( self::OPTION );
+			update_option( self::OPTION, 0, true );
 
 			return false;
 		}
@@ -122,12 +126,10 @@ final class ExemptAdminsNotice {
 		check_admin_referer( self::NONCE );
 
 		if ( 'on' === sanitize_key( wp_unslash( $_GET[ self::ARG ] ) ) ) {
-			$this->settings->update(
-				array_merge( $this->settings->all(), array( 'exempt_admins' => true ) )
-			);
+			$this->settings->update( array( 'exempt_admins' => true ) );
 		}
 
-		delete_option( self::OPTION );
+		update_option( self::OPTION, 0, true );
 
 		wp_safe_redirect( remove_query_arg( array( self::ARG, '_wpnonce' ) ) );
 		exit;
@@ -145,7 +147,7 @@ final class ExemptAdminsNotice {
 
 		if (
 			! $screen
-			|| 'users_page_' . Plugin::SLUG !== $screen->id
+			|| Admin::SCREEN !== $screen->id
 			|| ! current_user_can( 'manage_options' )
 			|| ! $this->is_due()
 		) {

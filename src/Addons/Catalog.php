@@ -12,6 +12,7 @@
  * catalogue here rather than in the controller means it can feed
  * WP-CLI or tests without going through a `WP_REST_Request`.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Addons
  */
 
@@ -22,7 +23,7 @@ namespace FoxeLabs\Loggedin\Addons;
 defined( 'WPINC' ) || die;
 
 /**
- * Static catalog of available addons.
+ * Catalogue of available add-ons, from the Freemius API.
  *
  * @since 3.0.0
  */
@@ -75,7 +76,7 @@ final class Catalog {
 	public function items( bool $force = false ): array {
 		$addons     = $this->addons;
 		$catalogue  = $addons->get_addons( $force );
-		$registered = $addons->get_registered_addons_public();
+		$registered = $addons->get_registered_addons();
 		$licenses   = $addons->get_license_items();
 
 		$items = array();

@@ -10,6 +10,7 @@
  * and the last login read user meta already in the cache: no extra query
  * per row.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\UserSessions
  */
 
@@ -18,6 +19,7 @@ declare( strict_types = 1 );
 namespace FoxeLabs\Loggedin\Modules\UserSessions;
 
 use FoxeLabs\Loggedin\Sessions\LastLogin;
+use FoxeLabs\Loggedin\Sessions\SessionStore;
 use WP_Session_Tokens;
 use WP_User;
 use WP_User_Query;
@@ -55,14 +57,25 @@ final class UsersList {
 	private LastLogin $last_login;
 
 	/**
+	 * Session store.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var SessionStore
+	 */
+	private SessionStore $store;
+
+	/**
 	 * Set up the dependencies.
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param LastLogin $last_login Last login record.
+	 * @param LastLogin    $last_login Last login record.
+	 * @param SessionStore $store      Session store.
 	 */
-	public function __construct( LastLogin $last_login ) {
+	public function __construct( LastLogin $last_login, SessionStore $store ) {
 		$this->last_login = $last_login;
+		$this->store      = $store;
 	}
 
 	/**
@@ -341,13 +354,7 @@ final class UsersList {
 			return false;
 		}
 
-		$manager = WP_Session_Tokens::get_instance( $user_id );
-
-		if ( get_current_user_id() === $user_id ) {
-			$manager->destroy_others( wp_get_session_token() );
-		} else {
-			$manager->destroy_all();
-		}
+		$this->store->end_all( $user_id, true );
 
 		/**
 		 * Fires after an admin signs a user out of every device from

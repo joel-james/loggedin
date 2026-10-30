@@ -2,6 +2,7 @@
 /**
  * Sessions on the Users screen and on profiles.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\UserSessions
  */
 
@@ -51,7 +52,7 @@ final class UserSessions implements Module {
 	 * @param LastLogin    $last_login Last login record.
 	 */
 	public function __construct( SessionStore $store, LastLogin $last_login ) {
-		$this->users_list       = new UsersList( $last_login );
+		$this->users_list       = new UsersList( $last_login, $store );
 		$this->profile_sessions = new ProfileSessions( $store );
 	}
 

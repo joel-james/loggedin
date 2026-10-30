@@ -5,11 +5,12 @@
  * Subclasses inherit:
  *   - the shared `loggedin/v1` namespace.
  *   - a default permission callback that requires `manage_options`.
- *   - a `hook()` method that wires `register_routes()` into
+ *   - a `register()` method that wires `register_routes()` into
  *     `rest_api_init`.
  *
  * Per-route argument schemas and callbacks live in each subclass.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Rest
  */
 
@@ -32,23 +33,25 @@ abstract class Endpoint {
 	/**
 	 * REST namespace shared by every plugin endpoint.
 	 *
+	 * @since 3.0.0
+	 *
 	 * @var string
 	 */
 	protected string $namespace = Plugin::REST_NAMESPACE;
 
 	/**
-	 * Wire `register_routes()` into `rest_api_init`.
+	 * Register hooks: the routes, on `rest_api_init`.
 	 *
-	 * Called from the subclass `init()` method so route registration
-	 * happens at the right point in the request lifecycle (after
-	 * permission callbacks are guaranteed to have user-context
-	 * available).
+	 * Routes are registered there, not earlier, because that is when
+	 * WordPress builds the REST server for a request.
 	 *
-	 * @since 3.0.0
+	 * @since 3.0.0 As `hook()`, called from each subclass.
+	 * @since 3.4.0 Named `register()`, like every service, and not
+	 *              repeated in each subclass.
 	 *
 	 * @return void
 	 */
-	public function hook(): void {
+	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
 

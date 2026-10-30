@@ -2,6 +2,30 @@
 
 Engineering decisions not covered by `ROADMAP.md`, which holds the product ones. Newest first.
 
+## 2026-10-30 — Review of core and add-ons
+- **Room is made only as a session is created.** `SessionGuard` no longer hooks `check_password`:
+  that filter runs on every password check, not only logins, so a "current password" field, an
+  application password or a 2FA first step ended sessions with nothing to replace them.
+  `attach_session_information` covers every session that is created. `validate_allow_logic()`
+  stays public for code that calls it.
+- **One "sign out everywhere".** `SessionStore::end_all( $user_id, $keep_current )` ends the
+  sessions through `WP_Session_Tokens` and fires `loggedin_destroy_all_sessions`. Every path
+  (Logout All, settings screen, REST, WP-CLI, Users screen, password change, unlock email) calls
+  it and fires its own, narrower hook as well.
+- **One settings schema.** `Settings::properties()` feeds the option's REST schema, the
+  `/loggedin/v1/settings` args and `sanitize()`. Add-on keys come in through
+  `loggedin_settings_properties` and are sanitised against their schema; built-in keys can't be
+  replaced. Before, a key added through `loggedin_settings_defaults` alone was dropped on save.
+- **Options read on every request are stored on install or upgrade** (`Upgrader::autoload_options()`),
+  so they autoload. Without a persistent object cache a missing option costs a query each request.
+  The exempt-administrators flag is set to 0 when answered rather than deleted, for the same reason.
+- **`Plugin::asset( $entry, $fallback_deps )`** reads a `build/*.asset.php` manifest for both the
+  admin bundle and the idle timer. Each add-on has its own copy: they share no code with core.
+- **`Admin::SCREEN`** is the one copy of the screen id `users_page_loggedin`.
+- **`Endpoint::register()`** replaces `hook()` plus a `register()` in each controller.
+- Not done: memoizing `Addons::get_registered_addons()`. Add-ons register on that filter as their
+  main file loads, and a cached copy taken earlier would miss later ones.
+
 ## 2026-10-30 — Structure shared with Convocept
 - **Layout:** PSR-4 classes in `src/`, grouped by domain, with tests in `tests/php/` mirroring
   them, as in Convocept. The `FoxeLabs\Loggedin\` namespace stays: add-ons check

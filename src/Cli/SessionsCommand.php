@@ -12,6 +12,7 @@
  * remains the job of the Active Sessions add-on, which owns the
  * cross-user queries and the pagination that comes with them.
  *
+ * @since 3.1.0
  * @package FoxeLabs\Loggedin\Cli
  */
 
@@ -56,13 +57,6 @@ final class SessionsCommand {
 	public function __construct( SessionStore $store ) {
 		$this->store = $store;
 	}
-
-	/**
-	 * Usermeta key WordPress stores session tokens under.
-	 *
-	 * @since 3.1.0
-	 */
-	private const META_KEY = 'session_tokens';
 
 	/**
 	 * Columns shown by `sessions list` when `--fields` is not given.
@@ -264,10 +258,7 @@ final class SessionsCommand {
 			$assoc_args
 		);
 
-		WP_Session_Tokens::get_instance( (int) $user->ID )->destroy_all();
-
-		/** This action is documented in src/Sessions/SessionGuard.php */
-		do_action( 'loggedin_destroy_all_sessions', (int) $user->ID );
+		$this->store->end_all( (int) $user->ID );
 
 		WP_CLI::success(
 			sprintf(
@@ -372,12 +363,16 @@ final class SessionsCommand {
 		$this->store->destroy( (int) $user->ID, array( $token ) );
 
 		/**
-		 * Fires after a single session is destroyed from the CLI.
+		 * Fires after a single session is destroyed.
+		 *
+		 * Fires from `wp loggedin sessions destroy --token=` and, since
+		 * 3.4.0, when users sign one of their devices out from their
+		 * profile.
 		 *
 		 * @since 3.1.0
 		 *
 		 * @param int    $user_id User id whose session was destroyed.
-		 * @param string $token   Hashed token of the destroyed session.
+		 * @param string $token   Verifier (hashed token) of the destroyed session.
 		 */
 		do_action( 'loggedin_destroy_session', (int) $user->ID, $token );
 
@@ -399,60 +394,31 @@ final class SessionsCommand {
 	 * disagree.
 	 *
 	 * @since 3.1.0
+	 * @since 3.4.0 Reads through SessionStore, so it is empty with a
+	 *              custom storage backend instead of showing stale rows.
 	 *
 	 * @param int $user_id User id.
 	 *
-	 * @return array<int, array<string, string|int>>
+	 * @return array<int, array<string, string>>
 	 */
 	private function sessions_for( int $user_id ): array {
-		$raw = get_user_meta( $user_id, self::META_KEY, true );
-
-		if ( ! is_array( $raw ) ) {
-			return array();
-		}
-
-		$now  = time();
 		$rows = array();
 
-		foreach ( $raw as $verifier => $session ) {
-			if ( ! is_array( $session ) || ! isset( $session['expiration'] ) ) {
-				continue;
-			}
-
-			$expiration = (int) $session['expiration'];
-
-			if ( $expiration <= $now ) {
-				continue;
-			}
-
-			$login = isset( $session['login'] ) ? (int) $session['login'] : 0;
+		// Newest first, as `SessionStore::all()` returns them and the
+		// admin screen shows them.
+		foreach ( $this->store->all( $user_id ) as $verifier => $session ) {
+			$login = (int) ( $session['login'] ?? 0 );
 
 			$rows[] = array(
 				'token'      => (string) $verifier,
 				'login'      => $login ? wp_date( 'Y-m-d H:i:s', $login ) : '',
-				'expiration' => wp_date( 'Y-m-d H:i:s', $expiration ),
-				'ip'         => isset( $session['ip'] ) ? (string) $session['ip'] : '',
-				'ua'         => isset( $session['ua'] ) ? (string) $session['ua'] : '',
-				'_login'     => $login,
+				'expiration' => wp_date( 'Y-m-d H:i:s', (int) $session['expiration'] ),
+				'ip'         => (string) ( $session['ip'] ?? '' ),
+				'ua'         => (string) ( $session['ua'] ?? '' ),
 			);
 		}
 
-		// Newest first — matches the order the admin UI uses.
-		usort(
-			$rows,
-			static function ( array $a, array $b ): int {
-				return $b['_login'] <=> $a['_login'];
-			}
-		);
-
-		return array_map(
-			static function ( array $row ): array {
-				unset( $row['_login'] );
-
-				return $row;
-			},
-			$rows
-		);
+		return $rows;
 	}
 
 	/**

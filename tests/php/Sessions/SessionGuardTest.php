@@ -270,4 +270,14 @@ class SessionGuardTest extends WP_UnitTestCase {
 
 		$this->assertCount( 0, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
 	}
+
+	public function test_a_password_check_alone_ends_no_session(): void {
+		$this->set_settings( 1, 'allow' );
+		$user = get_user_by( 'id', $this->user_id );
+
+		// A "current password" field or an application password checks
+		// the password without signing in.
+		$this->assertTrue( wp_check_password( 'correct-horse', $user->user_pass, $this->user_id ) );
+		$this->assertCount( 2, WP_Session_Tokens::get_instance( $this->user_id )->get_all() );
+	}
 }

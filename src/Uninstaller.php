@@ -2,6 +2,7 @@
 /**
  * Uninstall routine.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin
  */
 

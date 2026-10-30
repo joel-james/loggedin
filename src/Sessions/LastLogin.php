@@ -6,6 +6,7 @@
  * "Last login" column. Nothing else writes it, and it never touches
  * `session_tokens`.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Sessions
  */
 

@@ -2,6 +2,7 @@
 /**
  * Lockout & recovery: what users see when the limit stops or ends a login.
  *
+ * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\Lockout
  */
 
@@ -55,7 +56,7 @@ final class Lockout implements Module {
 	 * @param SessionStore $store    Session store.
 	 */
 	public function __construct( Settings $settings, SessionStore $store ) {
-		$this->unlock    = new Unlock( $settings );
+		$this->unlock    = new Unlock( $settings, $store );
 		$this->displaced = new Displaced( $settings, $store );
 	}
 

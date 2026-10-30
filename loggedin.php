@@ -11,6 +11,7 @@
  * session guard, admin UI, REST API, Freemius) lives behind its own
  * class under `src/`, built and wired by `Plugin`.
  *
+ * @since             1.0.0
  * @package           FoxeLabs\Loggedin
  * @author            Joel James
  * @copyright         2025 Joel James
@@ -43,6 +44,8 @@ defined( 'WPINC' ) || die;
  * the plugin (the autoloader, the React bundle in `build/`, the
  * language files, etc.). Defined here once so individual classes
  * can read it via `Plugin::dir()` without ever recomputing it.
+ *
+ * @since 3.0.0
  */
 define( 'LOGGEDIN_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -52,6 +55,8 @@ define( 'LOGGEDIN_DIR', plugin_dir_path( __FILE__ ) );
  * Freemius needs the main plugin file path during instance creation
  * (it derives the plugin basename from it). Captured here so we don't
  * have to thread it through every constructor.
+ *
+ * @since 3.0.0
  */
 define( 'LOGGEDIN_FILE', __FILE__ );
 

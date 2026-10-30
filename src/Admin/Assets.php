@@ -10,6 +10,7 @@
  * plugin only has one admin page — but the screen check is centralised
  * here so adding a second page later is a one-line constant change.
  *
+ * @since 3.0.0
  * @package FoxeLabs\Loggedin\Admin
  */
 
@@ -50,15 +51,21 @@ final class Assets {
 	private const HANDLE = 'loggedin-admin';
 
 	/**
-	 * Admin screen id where the bundle should load.
+	 * Admin bundle dependencies, for when it hasn't been built yet.
 	 *
-	 * `add_users_page()` produces a hook of the form
-	 * `users_page_<slug>` — we hard-code the resolved value rather
-	 * than rebuilding it each request to keep the comparison cheap.
-	 *
-	 * @since 3.0.0
+	 * @since 3.4.0
 	 */
-	private const SCREEN = 'users_page_loggedin';
+	private const FALLBACK_DEPS = array(
+		'wp-api-fetch',
+		'wp-components',
+		'wp-core-data',
+		'wp-data',
+		'wp-dom-ready',
+		'wp-element',
+		'wp-hooks',
+		'wp-i18n',
+		'wp-notices',
+	);
 
 	/**
 	 * Settings store.
@@ -118,11 +125,11 @@ final class Assets {
 	 * @return void
 	 */
 	public function register_jsx_runtime( string $hook ): void {
-		if ( self::SCREEN !== $hook || wp_script_is( 'react-jsx-runtime', 'registered' ) ) {
+		if ( Admin::SCREEN !== $hook || wp_script_is( 'react-jsx-runtime', 'registered' ) ) {
 			return;
 		}
 
-		$asset = $this->manifest( Plugin::dir() . 'build/react-jsx-runtime.asset.php' );
+		$asset = Plugin::asset( 'react-jsx-runtime' );
 
 		wp_register_script(
 			'react-jsx-runtime',
@@ -143,13 +150,13 @@ final class Assets {
 	 * @return void
 	 */
 	public function enqueue( string $hook ): void {
-		if ( self::SCREEN !== $hook ) {
+		if ( Admin::SCREEN !== $hook ) {
 			return;
 		}
 
 		$build_dir = Plugin::dir() . 'build/';
 		$build_url = Plugin::url() . 'build/';
-		$asset     = $this->manifest( $build_dir . self::ENTRY . '.asset.php' );
+		$asset     = Plugin::asset( self::ENTRY, self::FALLBACK_DEPS );
 
 		wp_enqueue_script(
 			self::HANDLE,
@@ -177,49 +184,6 @@ final class Assets {
 			);
 			wp_style_add_data( self::HANDLE, 'rtl', 'replace' );
 		}
-	}
-
-	/**
-	 * Read the `*.asset.php` manifest emitted by `wp-scripts`.
-	 *
-	 * The manifest declares the script's dependency list (e.g.
-	 * `wp-element`, `wp-components`) and a content-hash version
-	 * string. Falls back to a hand-curated dependency list and the
-	 * plugin version when the build artefact is missing — useful
-	 * during development before the first `npm run build`.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param string $path Absolute path to `<entry>.asset.php`.
-	 *
-	 * @return array{dependencies: array<string>, version: string}
-	 */
-	private function manifest( string $path ): array {
-		if ( is_readable( $path ) ) {
-			$manifest = include $path;
-
-			if ( is_array( $manifest ) ) {
-				return array(
-					'dependencies' => $manifest['dependencies'] ?? array(),
-					'version'      => $manifest['version'] ?? Plugin::VERSION,
-				);
-			}
-		}
-
-		return array(
-			'dependencies' => array(
-				'wp-api-fetch',
-				'wp-components',
-				'wp-core-data',
-				'wp-data',
-				'wp-dom-ready',
-				'wp-element',
-				'wp-hooks',
-				'wp-i18n',
-				'wp-notices',
-			),
-			'version'      => Plugin::VERSION,
-		);
 	}
 
 	/**
@@ -297,7 +261,7 @@ final class Assets {
 	private function active_addon_slugs(): array {
 		$slugs = array();
 
-		foreach ( $this->addons->get_registered_addons_public() as $args ) {
+		foreach ( $this->addons->get_registered_addons() as $args ) {
 			if ( ! empty( $args['slug'] ) ) {
 				$slugs[] = (string) $args['slug'];
 			}
