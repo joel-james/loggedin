@@ -169,14 +169,17 @@ final class SessionStore {
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param int  $user_id      User id.
-	 * @param bool $keep_current Keep the session making this request when
-	 *                           it is the user's own, so signing yourself
-	 *                           out doesn't end the request you made.
+	 * @param int                $user_id      User id.
+	 * @param bool               $keep_current Keep the session making this request when
+	 *                                         it is the user's own, so signing yourself
+	 *                                         out doesn't end the request you made.
+	 * @param array<int, string> $keep         Verifiers of sessions to keep as well,
+	 *                                         such as one created in this request.
+	 *                                         Default storage only.
 	 *
 	 * @return void
 	 */
-	public function end_all( int $user_id, bool $keep_current = false ): void {
+	public function end_all( int $user_id, bool $keep_current = false, array $keep = array() ): void {
 		if ( $user_id <= 0 ) {
 			return;
 		}
@@ -184,7 +187,14 @@ final class SessionStore {
 		$manager = WP_Session_Tokens::get_instance( $user_id );
 		$token   = $keep_current && get_current_user_id() === $user_id ? wp_get_session_token() : '';
 
-		if ( '' !== $token ) {
+		if ( ! empty( $keep ) && $this->is_default_storage( $user_id ) ) {
+			if ( '' !== $token ) {
+				$keep[] = $this->verifier( $token );
+			}
+
+			$stored = get_user_meta( $user_id, self::META_KEY, true );
+			$this->destroy( $user_id, array_diff( array_map( 'strval', array_keys( is_array( $stored ) ? $stored : array() ) ), $keep ) );
+		} elseif ( '' !== $token ) {
 			$manager->destroy_others( $token );
 		} else {
 			$manager->destroy_all();

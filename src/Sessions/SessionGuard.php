@@ -16,6 +16,12 @@
  *     `wp_set_auth_cookie()` directly. Block New can't refuse a login
  *     at this point, so those logins aren't limited under Block New.
  *
+ * Room is made at the end of the request, and only if the new session
+ * still exists then. 2FA plugins (Two Factor, WP 2FA) let WordPress
+ * create a session after the password, then destroy it and ask for the
+ * second factor: someone with only the password must not be able to
+ * sign the account out of its devices.
+ *
  * Before 3.4.0 room was made on `check_password`. That filter runs on
  * every password check, not only on logins: WooCommerce's "current
  * password" field, application passwords before WordPress 6.8, and a
@@ -48,6 +54,13 @@ defined( 'WPINC' ) || die;
 final class SessionGuard {
 
 	/**
+	 * Error code of a login refused by Block New.
+	 *
+	 * @since 3.4.0
+	 */
+	public const ERROR_CODE = 'login_limit_reached';
+
+	/**
 	 * Settings store.
 	 *
 	 * @since 3.4.0
@@ -64,6 +77,25 @@ final class SessionGuard {
 	 * @var SessionStore
 	 */
 	private SessionStore $store;
+
+	/**
+	 * Users given a session in this request, with the verifiers of the
+	 * sessions they had before it.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var array<int, array<int, string>>
+	 */
+	private array $pending = array();
+
+	/**
+	 * The Block New message shown in this request, if a login was refused.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var string
+	 */
+	private string $blocked_message = '';
 
 	/**
 	 * Set up the dependencies.
@@ -85,17 +117,25 @@ final class SessionGuard {
 	 *
 	 * @since 3.0.0
 	 * @since 3.4.0 No longer hooks `check_password`; see the file header.
+	 *              Keeps the Block New message visible through Ultimate
+	 *              Member and plugins that rewrite login errors.
 	 */
 	public function register(): void {
 		add_filter( 'wp_authenticate_user', array( $this, 'validate_block_logic' ), 10, 2 );
 		add_filter( 'attach_session_information', array( $this, 'enforce_on_create' ), 10, 2 );
+		add_filter( 'login_errors', array( $this, 'keep_blocked_message' ), 99 );
+		add_filter( 'um_custom_authenticate_error_codes', array( $this, 'add_error_code' ) );
 	}
 
 	/**
-	 * Make room as a session is created.
+	 * Note a session being created, to make room for it later.
 	 *
-	 * Runs for every new session, before it is stored, so the count
-	 * {@see self::make_room()} reads doesn't include it yet.
+	 * Runs for every new session, before it is stored. Notes which
+	 * sessions the user had, and {@see self::make_room_for_new_sessions()}
+	 * makes room among those at the end of the request.
+	 *
+	 * With a custom session backend the sessions can't be listed, so
+	 * room is made at once instead.
 	 *
 	 * @since 3.4.0
 	 *
@@ -105,9 +145,73 @@ final class SessionGuard {
 	 * @return array<string, mixed>
 	 */
 	public function enforce_on_create( $session, $user_id ): array {
-		$this->make_room( (int) $user_id );
+		$user_id = (int) $user_id;
+
+		if ( ! $this->store->is_default_storage( $user_id ) ) {
+			$this->make_room( $user_id );
+
+			return (array) $session;
+		}
+
+		if ( ! isset( $this->pending[ $user_id ] ) ) {
+			$this->pending[ $user_id ] = $this->store->verifiers( $user_id );
+
+			add_action( 'shutdown', array( $this, 'make_room_for_new_sessions' ) );
+		}
 
 		return (array) $session;
+	}
+
+	/**
+	 * Make room for the sessions created in this request.
+	 *
+	 * Skips a user whose new session no longer exists: a 2FA plugin
+	 * destroyed it to ask for the second factor, or the user was signed
+	 * out again. Also skips sessions an administrator opened as the
+	 * user, which aren't the user signing in.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	public function make_room_for_new_sessions(): void {
+		$pending       = $this->pending;
+		$this->pending = array();
+
+		foreach ( $pending as $user_id => $before ) {
+			$sessions = $this->store->all( $user_id );
+			$new      = array_diff_key( $sessions, array_flip( $before ) );
+
+			if ( empty( $new ) || $this->all_switched( $new ) ) {
+				continue;
+			}
+
+			$this->make_room( $user_id, array_map( 'strval', array_keys( array_diff_key( $sessions, $new ) ) ) );
+		}
+	}
+
+	/**
+	 * Whether every one of these sessions was opened by switching user.
+	 *
+	 * User Switching marks the session it creates for the user switched
+	 * to with `switched_from_id`. Treating it as a login would sign the
+	 * user out of their own devices whenever support looked at their
+	 * account.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param array<string, array<string, mixed>> $sessions Sessions by verifier.
+	 *
+	 * @return bool
+	 */
+	private function all_switched( array $sessions ): bool {
+		foreach ( $sessions as $session ) {
+			if ( empty( $session['switched_from_id'] ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -144,22 +248,26 @@ final class SessionGuard {
 	 *
 	 * @since 3.4.0
 	 *
-	 * @param int $user_id User about to get a new session.
+	 * @param int                     $user_id User getting a new session.
+	 * @param array<int, string>|null $others  Verifiers of the sessions that
+	 *                                         count against the limit, when
+	 *                                         the new one is already stored.
+	 *                                         Null: every session counts.
 	 *
 	 * @return void
 	 */
-	protected function make_room( int $user_id ): void {
+	protected function make_room( int $user_id, ?array $others = null ): void {
 		$logic = (string) $this->settings->get( 'logic', 'allow' );
 
 		if (
 			! in_array( $logic, array( 'allow', 'logout_oldest' ), true ) ||
-			! $this->has_limit_reached( $user_id )
+			! $this->has_limit_reached( $user_id, null === $others ? null : count( $others ) )
 		) {
 			return;
 		}
 
 		if ( 'allow' === $logic ) {
-			$this->destroy_all_sessions( $user_id );
+			$this->destroy_all_sessions( $user_id, $others );
 
 			return;
 		}
@@ -169,8 +277,14 @@ final class SessionGuard {
 		// can be ended, so a filter that always reports the limit as
 		// reached can't loop forever.
 		do {
-			$ended = $this->destroy_oldest_session( $user_id );
-		} while ( $ended && $this->has_limit_reached( $user_id ) );
+			$ended = $this->destroy_oldest_session( $user_id, $others );
+			$left  = null;
+
+			if ( null !== $others ) {
+				$others = array_values( array_diff( $others, array( $ended ) ) );
+				$left   = count( $others );
+			}
+		} while ( '' !== $ended && $this->has_limit_reached( $user_id, $left ) );
 	}
 
 	/**
@@ -203,7 +317,10 @@ final class SessionGuard {
 			return $user;
 		}
 
-		if ( ! wp_check_password( (string) $password, $user->user_pass, $user->ID ) ) {
+		// WordPress never gets here without a password. An empty one
+		// means a plugin signed the user in some other way (Nextend
+		// Social Login's "Login restriction") and asks whether it may.
+		if ( '' !== (string) $password && ! wp_check_password( (string) $password, $user->user_pass, $user->ID ) ) {
 			return $user;
 		}
 
@@ -216,7 +333,52 @@ final class SessionGuard {
 		 */
 		do_action( 'loggedin_login_blocked', $user->ID );
 
-		return new WP_Error( 'login_limit_reached', $this->limit_error_message( $user ) );
+		$this->blocked_message = $this->limit_error_message( $user );
+
+		return new WP_Error( self::ERROR_CODE, $this->blocked_message );
+	}
+
+	/**
+	 * Show the Block New message on the login screen, if a plugin hid it.
+	 *
+	 * Security plugins such as Limit Login Attempts Reloaded replace
+	 * every login error with "Incorrect username or password", which
+	 * hides the limit and the unlock link. The message only appears
+	 * after the right password, so it tells nobody which accounts exist.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string $errors Login errors HTML.
+	 *
+	 * @return string
+	 */
+	public function keep_blocked_message( $errors ): string {
+		$errors = (string) $errors;
+
+		if ( '' === $this->blocked_message || false !== strpos( $errors, $this->blocked_message ) ) {
+			return $errors;
+		}
+
+		return $this->blocked_message;
+	}
+
+	/**
+	 * Let Ultimate Member show the Block New message.
+	 *
+	 * Ultimate Member's login form shows "Password is incorrect" for any
+	 * error code it doesn't know.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param mixed $codes Error codes Ultimate Member shows as they are.
+	 *
+	 * @return array<int, string>
+	 */
+	public function add_error_code( $codes ): array {
+		$codes   = (array) $codes;
+		$codes[] = self::ERROR_CODE;
+
+		return $codes;
 	}
 
 	/**
@@ -227,15 +389,24 @@ final class SessionGuard {
 	 * storage backend.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Added the `$others` parameter.
 	 *
-	 * @param int $user_id User id.
+	 * @param int                     $user_id User id.
+	 * @param array<int, string>|null $others  Verifiers to end, keeping the
+	 *                                         rest. Null: end every session.
 	 *
 	 * @return void
 	 */
-	protected function destroy_all_sessions( int $user_id ): void {
-		$this->displacing( $user_id, $this->store->verifiers( $user_id ) );
+	protected function destroy_all_sessions( int $user_id, ?array $others = null ): void {
+		if ( null === $others ) {
+			$this->displacing( $user_id, $this->store->verifiers( $user_id ) );
+			$this->store->end_all( $user_id );
 
-		$this->store->end_all( $user_id );
+			return;
+		}
+
+		$this->displacing( $user_id, $others );
+		$this->store->end_all( $user_id, false, array_values( array_diff( $this->store->verifiers( $user_id ), $others ) ) );
 	}
 
 	/**
@@ -247,25 +418,35 @@ final class SessionGuard {
 	 * (e.g. Redis) should configure the `allow` mode instead.
 	 *
 	 * @since 3.0.0
-	 * @since 3.4.0 Goes through SessionStore, skips expired sessions and
-	 *              reports whether one ended.
+	 * @since 3.4.0 Goes through SessionStore, skips expired sessions,
+	 *              picks only among `$among` and returns the verifier
+	 *              of the session it ended.
 	 *
-	 * @param int $user_id User id.
+	 * @param int                     $user_id User id.
+	 * @param array<int, string>|null $among   Verifiers to pick from.
+	 *                                         Null: any session.
 	 *
-	 * @return bool Whether a session ended.
+	 * @return string Verifier of the session ended, or '' if none was.
 	 */
-	protected function destroy_oldest_session( int $user_id ): bool {
-		$store  = $this->store;
-		$oldest = $store->oldest( $user_id );
+	protected function destroy_oldest_session( int $user_id, ?array $among = null ): string {
+		$store = $this->store;
+
+		if ( null === $among ) {
+			$oldest = $store->oldest( $user_id );
+		} else {
+			// `all()` is newest first.
+			$candidates = array_intersect( array_keys( $store->all( $user_id ) ), $among );
+			$oldest     = (string) end( $candidates );
+		}
 
 		if ( '' === $oldest ) {
-			return false;
+			return '';
 		}
 
 		$this->displacing( $user_id, array( $oldest ) );
 
 		if ( ! $store->destroy( $user_id, array( $oldest ) ) ) {
-			return false;
+			return '';
 		}
 
 		/**
@@ -277,7 +458,7 @@ final class SessionGuard {
 		 */
 		do_action( 'loggedin_destroy_oldest_session', $user_id );
 
-		return true;
+		return $oldest;
 	}
 
 	/**
@@ -290,20 +471,23 @@ final class SessionGuard {
 	 *     site-specific snippets use this for roles like `super_admin`).
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.0 Added the `$count` parameter.
 	 *
-	 * @param int $user_id User id.
+	 * @param int      $user_id User id.
+	 * @param int|null $count   Sessions that count against the limit.
+	 *                          Null: count every live session.
 	 *
 	 * @return bool
 	 *
 	 * @phpstan-impure
 	 */
-	protected function has_limit_reached( int $user_id ): bool {
+	protected function has_limit_reached( int $user_id, ?int $count = null ): bool {
 		if ( empty( $user_id ) || $this->is_bypassed( $user_id ) ) {
 			return false;
 		}
 
 		$maximum = (int) $this->settings->get( 'maximum', 1 );
-		$count   = count( WP_Session_Tokens::get_instance( $user_id )->get_all() );
+		$count   = $count ?? count( WP_Session_Tokens::get_instance( $user_id )->get_all() );
 		$reached = $count >= $maximum;
 
 		/**

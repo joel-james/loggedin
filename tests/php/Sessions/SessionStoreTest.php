@@ -124,6 +124,26 @@ class SessionStoreTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $manager->get_all() );
 	}
 
+	public function test_ending_every_session_can_keep_named_ones(): void {
+		$manager = WP_Session_Tokens::get_instance( $this->user_id );
+		$manager->create( time() + HOUR_IN_SECONDS );
+		$kept  = $manager->create( time() + HOUR_IN_SECONDS );
+		$store = Plugin::instance()->session_store();
+		$fired = 0;
+		add_action(
+			'loggedin_destroy_all_sessions',
+			static function () use ( &$fired ) {
+				++$fired;
+			}
+		);
+
+		$store->end_all( $this->user_id, false, array( $store->verifier( $kept ) ) );
+
+		$this->assertNotNull( $manager->get( $kept ) );
+		$this->assertCount( 1, $manager->get_all() );
+		$this->assertSame( 1, $fired );
+	}
+
 	public function test_a_site_can_name_devices_itself(): void {
 		add_filter(
 			'loggedin_session_device',
