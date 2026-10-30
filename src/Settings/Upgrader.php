@@ -258,8 +258,9 @@ final class Upgrader {
 		// defaults, which would switch those additions on before
 		// `keep_pre_340_behaviour()` reads the stored value.
 		$settings = array(
-			'unlock'        => false,
-			'exempt_admins' => false,
+			'unlock'           => false,
+			'exempt_admins'    => false,
+			'password_signout' => false,
 		);
 
 		if ( null !== $legacy_max ) {
@@ -279,10 +280,11 @@ final class Upgrader {
 	/**
 	 * Keep a site upgrading from before 3.4.0 working as it did.
 	 *
-	 * 3.4.0 turns on self-unlock by email and exempts administrators
-	 * from the limit. New installs get both; an upgraded site gets
-	 * neither until an admin turns them on, so nobody finds their
-	 * limits behaving differently after an update. A value already
+	 * 3.4.0 turns on self-unlock by email, exempts administrators from
+	 * the limit and signs users out of their other devices when their
+	 * password changes. New installs get all three; an upgraded site
+	 * gets none until an admin turns them on, so nobody finds their
+	 * sites behaving differently after an update. A value already
 	 * stored (set on an earlier pass, or by hand) is left alone.
 	 *
 	 * While administrators stay limited, a one-time notice suggests
@@ -299,8 +301,9 @@ final class Upgrader {
 		$settings = array_merge(
 			$this->settings->defaults(),
 			array(
-				'unlock'        => false,
-				'exempt_admins' => false,
+				'unlock'           => false,
+				'exempt_admins'    => false,
+				'password_signout' => false,
 			),
 			$stored
 		);

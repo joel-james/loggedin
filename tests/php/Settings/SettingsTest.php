@@ -162,7 +162,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$stored = get_option( Plugin::OPTION_KEY );
 		$this->assertFalse( $stored['unlock'] );
 		$this->assertFalse( $stored['exempt_admins'] );
-		$this->assertTrue( $stored['password_signout'] );
+		$this->assertFalse( $stored['password_signout'] );
 		$this->assertSame( 2, $stored['maximum'] );
 	}
 
@@ -183,6 +183,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertTrue( Plugin::instance()->settings()->get( 'unlock' ) );
 		$this->assertTrue( Plugin::instance()->settings()->get( 'exempt_admins' ) );
+		$this->assertTrue( Plugin::instance()->settings()->get( 'password_signout' ) );
 	}
 
 	public function test_an_upgrade_that_keeps_limiting_admins_suggests_the_exemption(): void {
@@ -315,6 +316,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertSame( 'block', $stored['logic'] );
 		$this->assertFalse( $stored['unlock'] );
 		$this->assertFalse( $stored['exempt_admins'] );
+		$this->assertFalse( $stored['password_signout'] );
 	}
 
 	public function test_options_read_on_every_request_are_autoloaded(): void {

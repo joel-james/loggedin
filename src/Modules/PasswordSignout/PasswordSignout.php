@@ -129,7 +129,7 @@ final class PasswordSignout implements Module {
 	 * @return void
 	 */
 	private function sign_out( int $user_id ): void {
-		if ( $user_id <= 0 || ! $this->settings->get( 'password_signout', true ) ) {
+		if ( $user_id <= 0 || $this->is_logging_in() || ! $this->settings->get( 'password_signout', true ) ) {
 			return;
 		}
 
@@ -143,5 +143,21 @@ final class PasswordSignout implements Module {
 		 * @param int $user_id User whose password changed.
 		 */
 		do_action( 'loggedin_password_signout', $user_id );
+	}
+
+	/**
+	 * Whether WordPress is signing someone in right now.
+	 *
+	 * LDAP, Active Directory and SSO plugins copy the directory password
+	 * into WordPress on every login. That isn't the user changing it, and
+	 * treating it as a change would sign them out of every other device
+	 * each time they sign in.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return bool
+	 */
+	private function is_logging_in(): bool {
+		return doing_filter( 'authenticate' ) || doing_filter( 'wp_authenticate_user' ) || doing_action( 'wp_login' );
 	}
 }

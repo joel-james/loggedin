@@ -73,6 +73,29 @@ class PasswordSignoutTest extends WP_UnitTestCase {
 		$this->assertSame( 2, $this->sessions() );
 	}
 
+	public function test_a_password_copied_in_during_login_ends_nothing(): void {
+		// What LDAP and SSO plugins do on every login.
+		$sync = static function ( $user, $username, $password ) {
+			$id = get_user_by( 'login', $username )->ID;
+			wp_set_password( $password, $id );
+			wp_update_user(
+				array(
+					'ID'        => $id,
+					'user_pass' => $password,
+				)
+			);
+
+			return $user;
+		};
+		add_filter( 'authenticate', $sync, 5, 3 );
+
+		$user = wp_authenticate( get_user_by( 'id', $this->user_id )->user_login, 'directory-password' );
+
+		remove_filter( 'authenticate', $sync, 5 );
+		$this->assertInstanceOf( \WP_User::class, $user );
+		$this->assertSame( 2, $this->sessions() );
+	}
+
 	public function test_nothing_happens_while_the_setting_is_off(): void {
 		update_option( Plugin::OPTION_KEY, array( 'password_signout' => false ) );
 
