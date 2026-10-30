@@ -20,6 +20,14 @@
 import { useSelect, useDispatch } from '@wordpress/data';
 import { STORE_KEY } from '../store/addons';
 
+/**
+ * The add-on catalogue and the actions on it.
+ *
+ * Reading `items` the first time starts the catalogue fetch.
+ *
+ * @return {{ items: Array, isLoading: boolean, isRefreshing: boolean, refresh: Function, activateLicense: Function, deactivateLicense: Function }}
+ *     Catalogue, loading flags and store actions.
+ */
 const useAddons = () => {
 	const { items, isLoading, isRefreshing } = useSelect( ( select ) => {
 		const store = select( STORE_KEY );

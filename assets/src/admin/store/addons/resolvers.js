@@ -6,10 +6,11 @@
  * effects (a REST fetch), dispatches actions to populate state, and
  * is then never called again unless the cache is invalidated.
  *
- * We *always* dispatch `setItems`, even on failure — without this
- * `hasFinishedResolution` also stays false and the React UI is
- * stuck on a spinner. On failure we dispatch an empty array and an
- * error snackbar so the user understands why the catalogue is empty.
+ * A failed fetch is caught rather than thrown. `@wordpress/data` would
+ * mark the resolution finished on a throw too, so the spinner stops
+ * either way; catching is what lets us tell the user. On failure we
+ * dispatch an empty list and an error snackbar saying why the
+ * catalogue is empty.
  */
 import { dispatch } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';

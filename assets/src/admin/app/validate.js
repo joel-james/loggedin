@@ -6,7 +6,7 @@
  * that holds it. While any error stands, Save stays disabled.
  */
 import { __, sprintf } from '@wordpress/i18n';
-import { errorKey } from './schema';
+import { errorKey, optionOf } from './schema';
 
 /**
  * The error for a whole number outside its range, or ''.
@@ -136,7 +136,7 @@ export function validate( site, fields, limits, home ) {
 	fields
 		.filter( ( field ) => 'number' === field.type )
 		.forEach( ( field ) => {
-			const option = field.option || 'loggedin_settings';
+			const option = optionOf( field );
 			const value =
 				undefined === field.key
 					? site?.[ option ]
@@ -157,7 +157,7 @@ export function validate( site, fields, limits, home ) {
 	fields
 		.filter( ( field ) => 'role-table' === field.type )
 		.forEach( ( field ) => {
-			const option = field.option || 'loggedin_settings';
+			const option = optionOf( field );
 			const map = site?.[ option ];
 
 			if ( ! map || 'object' !== typeof map || Array.isArray( map ) ) {

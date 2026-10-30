@@ -10,6 +10,13 @@
 import apiFetch from '@wordpress/api-fetch';
 
 const controls = {
+	/**
+	 * Run a REST request.
+	 *
+	 * @param {Object} action         Control action.
+	 * @param {Object} action.request `apiFetch` options.
+	 * @return {Promise<*>} Response.
+	 */
 	API_FETCH( { request } ) {
 		return apiFetch( request );
 	},

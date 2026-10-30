@@ -17,7 +17,20 @@ import { Card, NumberField, SelectField, TextField, Toggle } from '../ui';
 import useOption from '../hooks/use-option';
 import { RoleTable } from './role-table';
 
+/**
+ * The option a field edits when it names none.
+ *
+ * @type {string}
+ */
 const CORE_OPTION = 'loggedin_settings';
+
+/**
+ * The option a field edits: its own `option`, else the core settings.
+ *
+ * @param {Object} field Field declaration.
+ * @return {string} Option name.
+ */
+export const optionOf = ( field ) => field.option || CORE_OPTION;
 
 /**
  * Error key for a field: `option.key`, or the option alone.
@@ -26,7 +39,7 @@ const CORE_OPTION = 'loggedin_settings';
  * @return {string} Key.
  */
 export const errorKey = ( field ) => {
-	const option = field.option || CORE_OPTION;
+	const option = optionOf( field );
 
 	if ( 'role-table' === field.type ) {
 		return `${ option }.`;
@@ -56,22 +69,25 @@ const fromOption = ( site, path ) => {
 /**
  * Read and edit one field's value, in an object option or a whole one.
  *
+ * `keyed` reads any key of the same option, for `show_if`.
+ *
  * @param {Object} field Field declaration.
- * @return {{ get: Function, set: Function, values: Object }} Accessors.
+ * @return {{ get: Function, set: Function, values: Object, keyed: Object }} Accessors.
  */
 function useFieldValue( field ) {
-	const option = field.option || CORE_OPTION;
+	const option = optionOf( field );
 	const keyed = useOption( option );
 	const [ whole, setWhole ] = useEntityProp( 'root', 'site', option );
 
 	if ( undefined !== field.key ) {
-		return keyed;
+		return { ...keyed, keyed };
 	}
 
 	return {
 		values: keyed.values,
 		get: ( key, fallback ) => ( undefined === whole ? fallback : whole ),
 		set: ( key, value ) => setWhole( value ),
+		keyed,
 	};
 }
 
@@ -85,18 +101,25 @@ function useFieldValue( field ) {
  * @return {Element|null} Field.
  */
 function SchemaField( { field, errors, roles } ) {
-	const option = field.option || CORE_OPTION;
-	const { get, set, values } = useFieldValue( field );
-	const conditions = useOption( option );
-	const site = useSelect(
+	const { get, set, values, keyed } = useFieldValue( field );
+
+	/*
+	 * Select the one number a role table falls back to, not the whole
+	 * edited record: that record changes on every keystroke anywhere on
+	 * the screen, and would re-render every field with it.
+	 */
+	const inherited = useSelect(
 		( select ) =>
-			select( coreStore ).getEditedEntityRecord( 'root', 'site' ),
-		[]
+			fromOption(
+				select( coreStore ).getEditedEntityRecord( 'root', 'site' ),
+				field.default_from
+			),
+		[ field.default_from ]
 	);
 
 	if (
 		field.show_if &&
-		conditions.get( field.show_if.key ) !== field.show_if.equals
+		keyed.get( field.show_if.key ) !== field.show_if.equals
 	) {
 		return null;
 	}
@@ -107,15 +130,10 @@ function SchemaField( { field, errors, roles } ) {
 				<RoleTable
 					value={ values }
 					roles={ roles }
-					fallback={
-						fromOption( site, field.default_from ) ??
-						field.default ??
-						field.min ??
-						1
-					}
+					fallback={ inherited ?? field.default ?? field.min ?? 1 }
 					help={ field.help }
 					errors={ errors }
-					option={ option }
+					option={ optionOf( field ) }
 					label={ field.label }
 					unit={ field.unit }
 					min={ field.min ?? 1 }

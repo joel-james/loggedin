@@ -20,6 +20,11 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { AddonHint, Button, Card, Modal, TextField } from '../ui';
 
+/**
+ * ID of the force logout form, so the modal's confirm button can submit it.
+ *
+ * @type {string}
+ */
 const FORM_ID = 'loggedin-force-logout';
 
 /**

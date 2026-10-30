@@ -14,6 +14,7 @@ export {
 	PageHeader,
 	PageFooter,
 	ExternalLink,
+	OpensInNewTab,
 	Card,
 	TableCard,
 	Notice,

@@ -44,6 +44,16 @@ const diffCount = ( saved, edited ) => {
 	).length;
 };
 
+/**
+ * The screen's save state: what changed, and Save and Discard for it.
+ *
+ * Save sends every edited `root/site` value in one request; a second
+ * click while it runs is ignored. A failed save keeps the edits and
+ * reports the server's message in `error`.
+ *
+ * @return {{ count: number, isDirty: boolean, isSaving: boolean, hasLoaded: boolean, justSaved: boolean, error: string, save: () => Promise<void>, discard: () => void }}
+ *     Changed values, flags, the last save error ('' when none), and the two actions.
+ */
 const useSave = () => {
 	const { record, edits, isSaving, hasLoaded } = useSelect( ( select ) => {
 		const core = select( coreStore );

@@ -12,7 +12,34 @@ import { store as noticesStore } from '@wordpress/notices';
 /**
  * Internal dependencies
  */
-import { Button, Card, Icon } from '../ui';
+import { Button, Card, Icon, OpensInNewTab } from '../ui';
+
+/**
+ * A compact button that opens an outside page in a new tab, with the
+ * external-link icon after its label and the new-tab note for screen
+ * readers.
+ *
+ * @param {Object}  props          Props.
+ * @param {string}  props.variant  Button variant.
+ * @param {string}  props.href     Address.
+ * @param {Element} props.children Label.
+ * @return {Element} Button.
+ */
+function ExternalButton( { variant, href, children } ) {
+	return (
+		<Button
+			variant={ variant }
+			size="compact"
+			href={ href }
+			target="_blank"
+			rel="noopener noreferrer"
+		>
+			{ children }
+			<Icon name="external" size={ 16 } />
+			<OpensInNewTab />
+		</Button>
+	);
+}
 
 /**
  * The Help page.
@@ -55,15 +82,6 @@ export function HelpPage( { boot } ) {
 		}
 	};
 
-	const external = (
-		<>
-			<Icon name="external" size={ 16 } />
-			<span className="screen-reader-text">
-				{ __( '(opens in a new tab)', 'loggedin' ) }
-			</span>
-		</>
-	);
-
 	return (
 		<>
 			<Card
@@ -74,16 +92,9 @@ export function HelpPage( { boot } ) {
 					'loggedin'
 				) }
 				action={
-					<Button
-						variant="primary"
-						size="compact"
-						href={ boot.urls.docs }
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<ExternalButton variant="primary" href={ boot.urls.docs }>
 						{ __( 'Read the docs', 'loggedin' ) }
-						{ external }
-					</Button>
+					</ExternalButton>
 				}
 			/>
 			<Card
@@ -94,16 +105,12 @@ export function HelpPage( { boot } ) {
 					'loggedin'
 				) }
 				action={
-					<Button
+					<ExternalButton
 						variant="secondary"
-						size="compact"
 						href={ boot.urls.support }
-						target="_blank"
-						rel="noopener noreferrer"
 					>
 						{ __( 'Support forum', 'loggedin' ) }
-						{ external }
-					</Button>
+					</ExternalButton>
 				}
 			/>
 			<Card
@@ -114,16 +121,12 @@ export function HelpPage( { boot } ) {
 					'loggedin'
 				) }
 				action={
-					<Button
+					<ExternalButton
 						variant="secondary"
-						size="compact"
 						href={ boot.urls.contact }
-						target="_blank"
-						rel="noopener noreferrer"
 					>
 						{ __( 'Contact us', 'loggedin' ) }
-						{ external }
-					</Button>
+					</ExternalButton>
 				}
 			/>
 			<Card

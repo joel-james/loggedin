@@ -14,6 +14,11 @@ import { __ } from '@wordpress/i18n';
 import { AddonHint, Card, ChoiceTiles, NumberField } from '../ui';
 import useOption from '../hooks/use-option';
 
+/**
+ * Values shown while a setting has never been saved.
+ *
+ * @type {Object}
+ */
 const DEFAULTS = {
 	maximum: 1,
 	logic: 'allow',

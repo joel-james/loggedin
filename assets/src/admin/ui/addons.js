@@ -7,13 +7,13 @@
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import { Icon } from './icons';
-import { ExternalLink } from './layout';
+import { ExternalLink, OpensInNewTab } from './layout';
+import { isPlainClick } from './utils';
 
 /**
  * One help line under a setting an add-on extends, linking to the Add-ons
@@ -33,13 +33,7 @@ export function AddonHint( { href, linkText, onOpen, children } ) {
 			<a
 				href={ href }
 				onClick={ ( event ) => {
-					if (
-						0 !== event.button ||
-						event.metaKey ||
-						event.ctrlKey ||
-						event.shiftKey ||
-						event.altKey
-					) {
+					if ( ! isPlainClick( event ) ) {
 						return;
 					}
 
@@ -180,9 +174,7 @@ export function StoreButton( { href, icon, variant, children } ) {
 			icon={ <Icon name={ icon } size={ 16 } /> }
 		>
 			{ children }
-			<span className="screen-reader-text">
-				{ __( '(opens in a new tab)', 'loggedin' ) }
-			</span>
+			<OpensInNewTab />
 		</Button>
 	);
 }

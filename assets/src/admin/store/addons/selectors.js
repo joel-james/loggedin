@@ -10,6 +10,7 @@
  * Subsequent reads return the cached array.
  *
  * @param {Object} state Store state.
+ * @return {Array} Catalogue rows.
  */
 export function getItems( state ) {
 	return state.items;
@@ -19,6 +20,7 @@ export function getItems( state ) {
  * Is a user-triggered refresh currently in flight?
  *
  * @param {Object} state Store state.
+ * @return {boolean} Refreshing.
  */
 export function isRefreshing( state ) {
 	return state.isRefreshing;

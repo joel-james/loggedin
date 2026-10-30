@@ -41,6 +41,15 @@ import './idle.scss';
 	const warningMs = ( parseInt( config.warning, 10 ) || 0 ) * 1000;
 	const pingMs = ( parseInt( config.pingAfter, 10 ) || 60 ) * 1000;
 
+	/*
+	 * How often activity is recorded. Each record writes localStorage,
+	 * which fires `storage` in every other open tab, so recording every
+	 * mouse move would keep all of them busy. A sixtieth of the timeout,
+	 * between one and ten seconds, costs at most that much of the idle
+	 * time while keeping cross-tab traffic to a trickle.
+	 */
+	const recordEveryMs = Math.min( 10000, Math.max( 1000, timeoutMs / 60 ) );
+
 	// Shared across tabs so activity anywhere resets everywhere.
 	const STORAGE_KEY = 'loggedin_auto_logout_active';
 
@@ -50,6 +59,8 @@ import './idle.scss';
 	let logoutTimer = null;
 	let countdownTimer = null;
 	let dialog = null;
+	// When the open dialog's countdown reaches zero: last activity plus the timeout.
+	let deadline = 0;
 
 	/**
 	 * Read/write the shared activity stamp. Storage can throw in
@@ -147,15 +158,22 @@ import './idle.scss';
 	/**
 	 * Build and show the warning dialog with a live countdown.
 	 *
+	 * The countdown runs to the real logout time, not to "now plus the
+	 * warning": a tab that comes back from the background, or a page
+	 * loaded late in the idle window, opens the dialog with less than
+	 * the full warning left.
+	 *
+	 * @param {number} at Timestamp the session signs out at.
 	 * @return {void}
 	 */
-	function openDialog() {
+	function openDialog( at ) {
+		deadline = at;
+
 		if ( dialog ) {
 			return;
 		}
 
 		const strings = config.i18n || {};
-		const expiresAt = Date.now() + warningMs;
 
 		const root = document.createElement( 'div' );
 		root.className = 'loggedin-al-modal';
@@ -204,7 +222,7 @@ import './idle.scss';
 		 * @return {void}
 		 */
 		function tick() {
-			const remaining = expiresAt - Date.now();
+			const remaining = deadline - Date.now();
 
 			if ( remaining <= 0 ) {
 				message.textContent = strings.expiring || '';
@@ -244,8 +262,8 @@ import './idle.scss';
 		window.clearTimeout( warningTimer );
 		window.clearTimeout( logoutTimer );
 
-		const elapsed = Date.now() - from;
-		const untilLogout = timeoutMs - elapsed;
+		const logoutAt = from + timeoutMs;
+		const untilLogout = logoutAt - Date.now();
 
 		if ( untilLogout <= 0 ) {
 			signOut();
@@ -256,9 +274,11 @@ import './idle.scss';
 			const untilWarning = untilLogout - warningMs;
 
 			if ( untilWarning <= 0 ) {
-				openDialog();
+				openDialog( logoutAt );
 			} else {
-				warningTimer = window.setTimeout( openDialog, untilWarning );
+				warningTimer = window.setTimeout( function () {
+					openDialog( logoutAt );
+				}, untilWarning );
 			}
 		}
 
@@ -268,7 +288,7 @@ import './idle.scss';
 	/**
 	 * Note that the user did something, and reschedule.
 	 *
-	 * @param {boolean} force Bypass the once-a-second local throttle.
+	 * @param {boolean} force Bypass the local throttle (`recordEveryMs`).
 	 * @return {void}
 	 */
 	function recordActivity( force ) {
@@ -280,7 +300,7 @@ import './idle.scss';
 
 		const now = Date.now();
 
-		if ( ! force && now - lastActivity < 1000 ) {
+		if ( ! force && now - lastActivity < recordEveryMs ) {
 			return;
 		}
 

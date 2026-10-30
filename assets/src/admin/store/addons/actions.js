@@ -14,6 +14,11 @@ import { dispatch } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
 import { __ } from '@wordpress/i18n';
 
+/**
+ * REST route of the add-ons catalogue and its license actions.
+ *
+ * @type {string}
+ */
 const BASE = '/loggedin/v1/addons';
 
 // ---------------------------------------------------------------- //

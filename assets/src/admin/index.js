@@ -1,8 +1,8 @@
 /**
  * Admin app entry: boots the React UI on Users → Loggedin.
  *
- * Boot order matters: `api-init` first, so any data hook that runs
- * during the first render has the REST nonce, then the `@wordpress/data`
+ * Boot order matters: `api-init` first, so any request made during the
+ * first render goes through its middleware, then the `@wordpress/data`
  * store registrations, then the mount. The kit's stylesheet comes in
  * with `./ui`.
  *

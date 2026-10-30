@@ -12,11 +12,23 @@
  * via `hasFinishedResolution()`, so duplicating it in the reducer
  * is error-prone (easy to forget to flip it on the failure path).
  */
+/**
+ * State before the catalogue loads.
+ *
+ * @type {{ items: Array, isRefreshing: boolean }}
+ */
 const DEFAULT_STATE = {
 	items: [],
 	isRefreshing: false,
 };
 
+/**
+ * Apply one action to the add-ons state.
+ *
+ * @param {Object} state  Current state.
+ * @param {Object} action Dispatched action.
+ * @return {Object} Next state.
+ */
 const reducer = ( state = DEFAULT_STATE, action ) => {
 	switch ( action.type ) {
 		case 'SET_ITEMS':

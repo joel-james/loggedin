@@ -2,7 +2,7 @@
  * Settings → Auto logout: sign out sessions that go unused, and decide
  * how long any login lasts.
  *
- * Both are enforced on the server (`includes/auto-logout/`); this page
+ * Both are enforced on the server (`src/Modules/AutoLogout/`); this page
  * only edits the two options they read.
  */
 
@@ -18,9 +18,25 @@ import { Card, NumberField, Toggle } from '../ui';
 import useOption from '../hooks/use-option';
 import { RoleTable } from '../app/role-table';
 
+/**
+ * Option holding the auto logout settings.
+ *
+ * @type {string}
+ */
 const OPTION = 'loggedin_auto_logout_settings';
+
+/**
+ * Option holding idle timeouts by role: { role: minutes }.
+ *
+ * @type {string}
+ */
 const ROLE_OPTION = 'loggedin_auto_logout_role_timeouts';
 
+/**
+ * Values shown while a setting has never been saved.
+ *
+ * @type {Object}
+ */
 const DEFAULTS = {
 	idle_timeout: 0,
 	warning: 60,

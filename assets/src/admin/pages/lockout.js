@@ -14,6 +14,11 @@ import { __ } from '@wordpress/i18n';
 import { Card, TextareaField, TextField, Toggle } from '../ui';
 import useOption from '../hooks/use-option';
 
+/**
+ * Values shown while a setting has never been saved.
+ *
+ * @type {Object}
+ */
 const DEFAULTS = {
 	logic: 'allow',
 	unlock: true,

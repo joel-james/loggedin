@@ -6,13 +6,22 @@
  *   - `loggedin.admin.tabs` (JS filter): a whole page. Entries are
  *     `{ key, label, component, wide?, saves?, group?, icon?, before?, after? }`;
  *     they join the Manage group unless `group` says otherwise. A key
- *     that matches a core page replaces that page's content.
+ *     that matches a core page replaces that page's content. The
+ *     component gets the same props as a core page:
+ *       - `boot` (Object): the `window.loggedin` data from PHP.
+ *       - `errors` (Object): error text by `option.key`, for every page.
+ *       - `navigate` (Function): `( id ) => void`, shows another page in
+ *         place and records it in the address.
+ *       - `hrefFor` (Function): `( id ) => string`, the address of a page,
+ *         for links that should also open in a new tab.
  *   - `loggedin.settings.panels` (JS filter): a panel on a page. Entries
  *     are `{ id, Component, page? }`; they join the Login limits page
  *     unless `page` names another. Panels built before the kit are
  *     WordPress `PanelBody` blocks, drawn as Cards by the stylesheet.
+ *     They get no props.
  *   - `loggedin_settings_schema` (PHP filter): pages, cards and fields
  *     declared in PHP and drawn with the kit's controls (see schema.js).
+ *     Each card gets `errors`, as above.
  *
  * A page with no content of its own and nothing added to it is left
  * out.
@@ -37,6 +46,35 @@ export const groups = () => [
 	{ id: 'manage', label: __( 'Manage', 'loggedin' ) },
 	{ id: 'more', label: __( 'More', 'loggedin' ) },
 ];
+
+/**
+ * Sidebar groups holding their pages, each page flagged when a setting on
+ * it has an error. Groups with no pages are left out.
+ *
+ * @param {Array}  pages  Resolved pages (see resolvePages).
+ * @param {Object} errors Error text by `option.key`.
+ * @return {Array} Groups: [{ id, label, pages: [{ ...page, flag }] }].
+ */
+export const groupsWithPages = ( pages, errors ) =>
+	groups()
+		.map( ( group ) => ( {
+			...group,
+			pages: pages
+				.filter( ( item ) => item.group === group.id )
+				.map( ( item ) => ( {
+					...item,
+					flag: Object.keys( errors ).some( ( error ) =>
+						item.keys.some( ( key ) =>
+							key.endsWith( '.' )
+								? error.startsWith( key )
+								: error === key
+						)
+					)
+						? __( 'Needs fixing', 'loggedin' )
+						: '',
+				} ) ),
+		} ) )
+		.filter( ( group ) => group.pages.length );
 
 /**
  * Core pages, in sidebar order.

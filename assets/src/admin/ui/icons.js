@@ -34,6 +34,11 @@ export function Icon( { name, size = 18 } ) {
 	);
 }
 
+/**
+ * Each icon's strokes, by name, drawn inside a 24×24 viewBox.
+ *
+ * @type {Object<string, Element>}
+ */
 const PATHS = {
 	limits: (
 		<>

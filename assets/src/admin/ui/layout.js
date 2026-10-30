@@ -13,6 +13,7 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { Icon, Logo } from './icons';
+import { isPlainClick } from './utils';
 
 /**
  * The plugin's navigation: brand and status, then grouped links to pages.
@@ -47,13 +48,7 @@ export function Sidebar( {
 	 * @return {void}
 	 */
 	const onClick = ( event, id ) => {
-		if (
-			event.button !== 0 ||
-			event.metaKey ||
-			event.ctrlKey ||
-			event.shiftKey ||
-			event.altKey
-		) {
+		if ( ! isPlainClick( event ) ) {
 			return;
 		}
 
@@ -250,6 +245,22 @@ export function PageHeader( { title, nav, status, actions } ) {
 }
 
 /**
+ * Screen-reader text for a link or button that opens in a new tab.
+ *
+ * Goes inside the link, after its visible text, so the link's
+ * accessible name ends "(opens in a new tab)".
+ *
+ * @return {Element} Hidden text.
+ */
+export function OpensInNewTab() {
+	return (
+		<span className="screen-reader-text">
+			{ __( '(opens in a new tab)', 'loggedin' ) }
+		</span>
+	);
+}
+
+/**
  * A link that opens in a new tab and says so to screen readers.
  *
  * @param {Object}  props             Props.
@@ -267,9 +278,7 @@ export function ExternalLink( { href, className, children } ) {
 			rel="noopener noreferrer"
 		>
 			{ children }
-			<span className="screen-reader-text">
-				{ __( '(opens in a new tab)', 'loggedin' ) }
-			</span>
+			<OpensInNewTab />
 		</a>
 	);
 }
@@ -302,6 +311,25 @@ export function PageFooter( { meta, label, links } ) {
 }
 
 /**
+ * A card's title and the sentence under it, shared by Card and TableCard.
+ *
+ * @param {Object} props               Props.
+ * @param {string} props.title         Card title.
+ * @param {string} [props.description] One sentence under the title.
+ * @return {Element} Title block.
+ */
+function CardHead( { title, description } ) {
+	return (
+		<div className="loggedin-card__text">
+			<h2 className="loggedin-card__title">{ title }</h2>
+			{ description && (
+				<p className="loggedin-card__desc">{ description }</p>
+			) }
+		</div>
+	);
+}
+
+/**
  * A white bordered panel holding one topic.
  *
  * @param {Object}  props               Props.
@@ -314,14 +342,7 @@ export function PageFooter( { meta, label, links } ) {
  * @return {Element} Card.
  */
 export function Card( { title, description, icon, action, footer, children } ) {
-	const head = (
-		<div className="loggedin-card__text">
-			<h2 className="loggedin-card__title">{ title }</h2>
-			{ description && (
-				<p className="loggedin-card__desc">{ description }</p>
-			) }
-		</div>
-	);
+	const head = <CardHead title={ title } description={ description } />;
 
 	return (
 		<section className="loggedin-card">
@@ -367,12 +388,7 @@ export function TableCard( { title, description, action, children } ) {
 	return (
 		<section className="loggedin-card loggedin-table-card">
 			<div className="loggedin-card__head">
-				<div className="loggedin-card__text">
-					<h2 className="loggedin-card__title">{ title }</h2>
-					{ description && (
-						<p className="loggedin-card__desc">{ description }</p>
-					) }
-				</div>
+				<CardHead title={ title } description={ description } />
 				{ action }
 			</div>
 			<div className="loggedin-table-card__body">{ children }</div>
@@ -380,6 +396,11 @@ export function TableCard( { title, description, action, children } ) {
 	);
 }
 
+/**
+ * Icon for each Notice tone. An unknown tone falls back to `info`.
+ *
+ * @type {Object<string, string>}
+ */
 const NOTICE_ICONS = {
 	success: 'success',
 	error: 'error',
