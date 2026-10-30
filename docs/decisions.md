@@ -2,6 +2,24 @@
 
 Engineering decisions not covered by `ROADMAP.md`, which holds the product ones. Newest first.
 
+## 2026-10-30 — A5 QA fixes
+- **An idle window starts no earlier than the last timeout change.** A session with no activity
+  stamp counted from its login, so turning idle logout on (or shortening it) signed out at once
+  every session older than the timeout, the admin who saved it included. `Settings` records when
+  an idle timeout changes (`loggedin_auto_logout_changed`, autoloaded) and `IdleGuard` counts from
+  the later of that and the login. A pruned stamp still ages out: its window had already closed.
+- **The browser counts from the server's stamp.** The server rewrites a stamp only every quarter
+  of the timeout, so its deadline could fall before the browser's, and any background request
+  (Real-time Logout's poll, the heartbeat) then ended the session with no warning.
+  The script gets `lastActive` and counts from the older of that and local activity; when a timer
+  is due and there is activity the server hasn't heard of, it pings and counts again instead of
+  warning. A ping answered with a 400 (no session) goes straight to the login notice.
+- **Every idle sign-out lands on `wp-login.php?loggedin_auto_logout=1`.** The flag used to sit
+  inside `redirect_to` or on the home page, where the login screen never saw it.
+- **`--loggedin-theme-text`** (`--wp-admin-theme-color-darker-10`) for theme-coloured text on a
+  tint or on the grey page; the plain theme colour is below 4.5:1 there in seven of nine schemes.
+  The Foxe Plugin Admin Kit artifact should take the same token.
+
 ## 2026-10-30 — Review of core and add-ons
 - **Room is made only as a session is created.** `SessionGuard` no longer hooks `check_password`:
   that filter runs on every password check, not only logins, so a "current password" field, an

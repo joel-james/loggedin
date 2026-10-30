@@ -22,6 +22,13 @@
 .users_page_loggedin .components-modal__frame {
 	--loggedin-theme: var(--wp-admin-theme-color, #3858e9);
 	--loggedin-theme-hover: var(--wp-admin-theme-color-darker-10, #2145e6);
+
+	/*
+	 * Theme-coloured text on a tint or on the grey page. The plain colour
+	 * drops below 4.5:1 there in most of the nine schemes; one shade darker
+	 * clears it in all of them.
+	 */
+	--loggedin-theme-text: var(--wp-admin-theme-color-darker-10, #2145e6);
 	--loggedin-on-theme: #fff;
 	--loggedin-ground: #f0f0f1;
 	--loggedin-surface: #fff;
@@ -232,7 +239,7 @@ html {
 
 .loggedin-admin .loggedin-nav-item[aria-current="page"] {
 	background: color-mix(in srgb, var(--loggedin-theme) 8%, var(--loggedin-surface));
-	color: var(--loggedin-theme);
+	color: var(--loggedin-theme-text);
 	font-weight: 600;
 }
 
@@ -944,6 +951,14 @@ html {
 	color: var(--loggedin-fg-muted);
 }
 
+/*
+ * The caption row sits on the grey page, where the plain theme colour is
+ * below 4.5:1 in most schemes.
+ */
+.loggedin-admin .loggedin-section-head .components-button.is-tertiary {
+	color: var(--loggedin-theme-text);
+}
+
 .loggedin-addons {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1446,9 +1461,10 @@ html {
 }
 
 /*
- * Windows high contrast mode drops background colours. Keep the marks that
- * carry meaning (status dots, the checked radio) and outline the
- * active page, whose tint would otherwise vanish.
+ * Windows high contrast mode drops background colours and box-shadows. Keep
+ * the marks that carry meaning (status dots, the checked radio), outline the
+ * active page, whose tint would otherwise vanish, and give the number
+ * field's focus ring an outline.
  */
 @media (forced-colors: active) {
 
@@ -1467,5 +1483,11 @@ html {
 
 	.loggedin-tile--on {
 		outline: 2px solid Highlight;
+	}
+
+	/* The frame's ring is a box-shadow and a border colour: both are dropped. */
+	.loggedin-affix:focus-within {
+		outline: 2px solid Highlight;
+		outline-offset: 1px;
 	}
 }

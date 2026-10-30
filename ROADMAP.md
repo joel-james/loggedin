@@ -415,15 +415,15 @@ Settled 2026-09-26 unless dated otherwise.
       `default_from`, `unit_one`
 - [x] A3 notice for add-ons older than the new screen (Active Sessions 1.2.0,
       Limit Per Role 2.2.0, Real-time Logout 2.2.0) — 2026-10-29
-- [x] A4 add-on UI migrations, each on its own `feature/admin-kit` branch,
-      uncommitted — 2026-10-29:
+- [x] A4 add-on UI migrations — 2026-10-29, merged to each repo's `dev`
+      branch on 2026-10-30:
       Active Sessions 1.2.0 (Manage › Active sessions on the kit),
       Limit Per Role 2.2.0 and Real-time Logout 2.2.0 (schema cards, no admin
       bundle on core 3.4.0+), Limit Per User 2.2.0 (profile field restyled;
       security fix: the field now needs `edit_users`, so users can no longer
       raise their own limit from their profile).
       Each keeps its old UI on core before 3.4.0
-- [ ] A5 QA. Done: PHPUnit on WordPress 7.1 and 6.5.14, JS lint, phpcs.
+- [x] A5 QA — 2026-10-30. Done: PHPUnit on WordPress 7.1 and 6.5.14, JS lint, phpcs.
       Found and fixed: the bundles need `react-jsx-runtime`, which WordPress
       only registers from 6.6, so 6.5 showed a blank screen; core now
       registers a shim on its screen.
@@ -436,11 +436,27 @@ Settled 2026-09-26 unless dated otherwise.
       lost after removing a role row, the Message textarea's label not
       linked, profile Sign out buttons without a device name for screen
       readers, stacked role rows running together on phones.
-      Left: 782px, two admin colour schemes and the accent, contrast, Windows
-      high contrast, keyboard-only pass of every page, older core with new
-      add-ons and the reverse, and the login flows end to end (Block New
-      message, self-unlock email, displaced notice and redirect, idle
-      warning)
+      Second pass, 2026-10-30, on branch `feature/a5-qa`: 782px (no sideways
+      scroll; the Active Sessions table scrolls inside its card), all nine
+      admin colour schemes (the accent follows each), contrast, keyboard-only
+      pass, high contrast CSS, core 3.3.1 with the new add-ons and core 3.4.0
+      with the released ones (no errors, legacy panels and the update notice
+      show), and the login flows end to end with curl and the browser.
+      Found and fixed: the active sidebar item and the Add-ons page's
+      "Refresh list" fell below 4.5:1 in most schemes (now one shade darker);
+      the number field lost its focus ring in high contrast mode; Active
+      Sessions dropped keyboard focus when its inline confirm opened or
+      closed, and its Sign out buttons had no session in their name; the
+      idle warning announced its countdown every second, let Tab leave it
+      and didn't return focus. Auto logout: turning it on signed out at once
+      every session older than the timeout, the admin's included; the
+      "signed out because your session was inactive" notice never showed;
+      and the server could end a session up to a quarter of the timeout
+      before the browser's warning.
+      Not fixable here: WordPress 7.1's primary button text (#eff0f2 on the
+      theme colour) is just under 4.5:1 in some schemes, and the DataViews
+      checkbox edge is 2.96:1. Windows high contrast mode itself was checked
+      in the CSS only, not on Windows
 - [x] B8 auto logout in core, REST idle-logout error — `feature/admin-kit`,
       2026-10-26. Docs moved to a core page with a redirect, 2026-10-29
       (docs repo branch `loggedin-3.4.0`). The add-on never sold and is

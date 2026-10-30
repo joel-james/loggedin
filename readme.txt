@@ -4,7 +4,7 @@ Tags: concurrent login, login limit, prevent account sharing, session management
 Donate link: https://paypal.me/JoelCJ
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 3.3.1
+Stable tag: 3.4.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -138,6 +138,8 @@ Yes, with the official [Limit Per User add-on](https://foxelabs.com/software/plu
 
 Yes, for free since 3.4.0. Go to **Users → Loggedin → Auto logout**, turn on idle logout and set the timeout. A countdown warns first, roles can have their own timeouts, and the check runs on the server, so leaving a tab open doesn't keep a session alive.
 
+Turning it on, or changing a timeout, signs nobody out on the spot: every session gets the full timeout from the moment you save. Users who are signed out are told why on the login screen.
+
 = Why was I signed out with "your account signed in on another device"? =
 
 Under Logout Oldest or Logout All, a new login on your account signed this device out to stay within the limit. If that wasn't you, change your password. Site owners can send these devices to a page of their own instead, on the Lockout & recovery page.
@@ -251,7 +253,7 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * Improve: Block New checks the password first. A wrong password gets WordPress's usual error, not the limit message.
 * Improve: Add-ons built for the old screen keep working, and links from before 3.4.0 still open the right page.
 * Improve: `wp loggedin settings set` accepts true/false, yes/no, on/off or 1/0 for on/off settings.
-* Improve: Keyboard and screen reader fixes on the settings screen and the profile's sign-out buttons.
+* Improve: Keyboard, screen reader and contrast fixes on the settings screen, the auto logout warning and the profile's sign-out buttons. The current page and focused fields stay visible in Windows high contrast mode.
 * Improve: Login modes added by other plugins through `loggedin_logics` can be saved.
 * Improve: `loggedin_destroy_all_sessions` now fires for every way a user is signed out everywhere, including the Users screen, a password change and the unlock email.
 * Improve: `POST /loggedin/v1/settings` accepts every setting, not only the limit and the login mode.
