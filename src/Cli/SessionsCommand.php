@@ -470,7 +470,7 @@ final class SessionsCommand {
 	private function warn_on_custom_storage( int $user_id ): void {
 		if ( ! $this->is_default_storage( $user_id ) ) {
 			WP_CLI::warning(
-				__( 'This site uses a custom session storage backend. Session details are read from the default usermeta store, so this list may be empty or incomplete.', 'loggedin' )
+				__( 'This site uses a custom session storage backend. Session details can only be read from the default usermeta store, so none are listed.', 'loggedin' )
 			);
 		}
 	}

@@ -122,7 +122,7 @@ It stops *simultaneous* sharing — two people can't be signed in to the same ac
 
 = Does this work with WooCommerce, MemberPress, LearnDash, BuddyPress, etc.? =
 
-Yes. Loggedin hooks into the standard WordPress authentication pipeline (`wp_authenticate_user` and `check_password`), so any plugin that logs users in through the normal WordPress flow — which is essentially every membership, LMS, e-commerce, and community plugin — is covered automatically. No integration code required.
+Yes. Loggedin hooks into the standard WordPress login pipeline (`wp_authenticate_user`, and `attach_session_information` as each session is created), so any plugin that logs users in through WordPress — which is essentially every membership, LMS, e-commerce, and community plugin — is covered automatically. No integration code required.
 
 Social login, magic link and popup login plugins often skip that pipeline. Since 3.4.0, Loggedin also applies Logout Oldest and Logout All as their sessions are created. Block New can't refuse those logins. See [social, magic-link and popup logins](https://docs.foxelabs.com/software/loggedin/compatibility).
 
