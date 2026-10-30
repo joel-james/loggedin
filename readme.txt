@@ -124,7 +124,7 @@ It stops *simultaneous* sharing — two people can't be signed in to the same ac
 
 Yes. Loggedin hooks into the standard WordPress login pipeline (`wp_authenticate_user`, and `attach_session_information` as each session is created), so any plugin that logs users in through WordPress — which is essentially every membership, LMS, e-commerce, and community plugin — is covered automatically. No integration code required.
 
-Social login, magic link and popup login plugins often skip that pipeline. Since 3.4.0, Loggedin also applies Logout Oldest and Logout All as their sessions are created. Block New can't refuse those logins. See [social, magic-link and popup logins](https://docs.foxelabs.com/software/loggedin/compatibility).
+Social login, magic link and popup login plugins often skip that pipeline. Since 3.4.0, Loggedin also applies Logout Oldest and Logout All as their sessions are created. Block New can't refuse those logins, unless the plugin asks first, as Nextend Social Login does with its "Login restriction" setting. WooCommerce, Ultimate Member, Nextend Social Login, Magic Login, Two Factor, Limit Login Attempts Reloaded, WPS Hide Login and User Switching have been tested; see [social, magic-link and popup logins](https://docs.foxelabs.com/software/loggedin/compatibility).
 
 = Can I set different limits for administrators and subscribers? =
 
@@ -242,10 +242,11 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * New: Set the blocked-login message on the Lockout & recovery page.
 * New: A device signed out by a newer login is told why on the login screen, or sent to a page you choose.
 * New: Auto logout is now free and built in — idle logout with a countdown, timeouts per role and session length.
-* New: A password change or reset signs the user out of their other devices.
+* New: A password change or reset can sign the user out of their other devices. On for new sites. A password an LDAP or SSO plugin copies in as the user signs in doesn't count.
 * New: Sessions and Last login columns, and a "Sign out everywhere" action, on the Users screen.
 * New: "Your sessions" on the profile screen.
 * New: Logout Oldest and Logout All now also apply to logins that skip the login form (social login, magic links, popup logins).
+* New: Switching to a user with User Switching isn't treated as their login, so it signs out none of their devices.
 * New: Add-ons can add pages, cards and fields from PHP with the `loggedin_settings_schema` filter.
 * New: `loggedin_sessions_displacing` action before Logout All or Logout Oldest ends sessions, and `loggedin_uninstalled` after the plugin is deleted.
 * New: `loggedin_settings_properties` filter, so an add-on's own key in Loggedin's settings is saved, and `loggedin_session_device` to name the devices in a user's session list.
@@ -258,7 +259,8 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * Improve: `loggedin_destroy_all_sessions` now fires for every way a user is signed out everywhere, including the Users screen, a password change and the unlock email.
 * Improve: `POST /loggedin/v1/settings` accepts every setting, not only the limit and the login mode.
 * Improve: Fewer database queries on each page: settings that are often unset are stored so they load with the rest, and pages that don't sign anyone in no longer load the translations to check a setting.
-* Fix: Checking a password without signing in, such as WooCommerce's "current password" field, an application password, or the first step of two-factor login, no longer signs the user out of their other devices under Logout All or Logout Oldest.
+* Fix: Checking a password without signing in, such as WooCommerce's "current password" field, an application password, or the first step of two-factor login, no longer signs the user out of their other devices under Logout All or Logout Oldest. With a two-factor plugin, devices are signed out only once the code is entered.
+* Fix: The Block New message, and its unlock link, now show through Ultimate Member's login form and Limit Login Attempts Reloaded, which replaced them with an "incorrect password" error.
 * Fix: The old force-logout link now also checks that the user can manage options.
 * Fix: Logout Oldest skips sessions that already expired, and ends as many as needed when the limit was lowered.
 * Fix: `wp loggedin sessions list` no longer shows leftover sessions on a site that stores sessions elsewhere, such as Redis.
@@ -267,7 +269,7 @@ See the [developer docs](https://docs.foxelabs.com/software/loggedin/developer-d
 * Changed: Force Logout moved to Manage › Sessions, and Support is now Help.
 * Changed: `loggedin_session_invalidated` passes the hashed session token instead of the raw one.
 * Changed: `loggedin_error_message` also passes the user, and `loggedin_init` passes the `Plugin` instance.
-* Changed: Sites updating from an earlier version keep self-unlock and the administrator exemption off until turned on.
+* Changed: Sites updating from an earlier version keep self-unlock, the administrator exemption and sign-out on password change off until turned on.
 
 = 3.3.1 =
 * Fix: Some valid add-on license keys were rejected as invalid. Keys containing a `%` followed by two characters from 0–9 or a–f, in either case (for example `%bB`) were shortened before being sent to the licensing server. Affected add-ons could not be activated and so stopped receiving updates.

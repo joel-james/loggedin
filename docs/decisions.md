@@ -2,6 +2,43 @@
 
 Engineering decisions not covered by `ROADMAP.md`, which holds the product ones. Newest first.
 
+## 2026-10-31 — Switched sessions and password sync
+- **A session opened by User Switching isn't a login.** User Switching adds `switched_from_id` to
+  the session it creates for the user switched to. When every new session in the request carries
+  it, `SessionGuard` makes no room: support switching to a customer would otherwise sign the
+  customer out of their devices. Reading the mark is possible because room is made at the end of
+  the request, after User Switching's own `attach_session_information` filter (priority 99).
+- **A password written during a login isn't a change.** LDAP, Active Directory and SSO plugins
+  copy the directory password into WordPress on each login, through `wp_set_password()` or
+  `wp_update_user()`. `PasswordSignout` skips while `authenticate`, `wp_authenticate_user` or
+  `wp_login` is running; a real reset or profile change never runs inside them.
+- **Sign out on password change is off for sites upgrading from before 3.4.0**, like self-unlock
+  and the administrator exemption, under the roadmap's backward-compatible defaults rule. It had
+  been left on for upgrades; new installs still get it on.
+
+## 2026-10-30 — B6 third-party login tests
+- **Room is made at the end of the request.** `attach_session_information` notes the user's
+  sessions; on `shutdown`, if a session not in that list still exists, Logout All or Logout Oldest
+  ends sessions from the list only. Two Factor (and WP 2FA) create a session after the password,
+  then destroy it and ask for the code, so ending sessions at creation let someone with only the
+  password sign every device out. The new session is never counted or ended, which also covers a
+  `loggedin_reached_limit` filter that always says yes. With a custom session backend the sessions
+  can't be listed, so room is still made at once there.
+- **`SessionStore::end_all()` takes verifiers to keep**, so Logout All at the end of the request
+  still goes through the one sign-out path and fires `loggedin_destroy_all_sessions`.
+- **Block New treats an empty password as vouched for.** WordPress never runs
+  `wp_authenticate_user` without a password; Nextend Social Login's "Login restriction" calls it
+  with `''` after the provider confirms the user. Checking the password first (3.4.0) had let
+  those logins through.
+- **The limit message is put back after other plugins rewrite it.** Limit Login Attempts Reloaded
+  replaces every login error on `login_errors`; `SessionGuard` restores ours at priority 99 when it
+  refused the login in that request. It only appears after the right password, so it reveals no
+  accounts. Ultimate Member shows unknown error codes as "Password is incorrect", so the code is
+  added to `um_custom_authenticate_error_codes`. Both are a filter each, with no check for the
+  other plugin.
+- Not fixed: LLAR counts a Block New refusal as a failed login (it listens on `wp_login_failed`,
+  which WordPress fires for any refusal). Documented on the compatibility page.
+
 ## 2026-10-30 — A5 QA fixes
 - **An idle window starts no earlier than the last timeout change.** A session with no activity
   stamp counted from its login, so turning idle logout on (or shortening it) signed out at once

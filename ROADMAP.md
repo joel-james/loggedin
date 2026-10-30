@@ -239,7 +239,8 @@ reached (a wrong one gets WordPress's own error). Use that moment:
 - Hook `after_password_reset` and password changes through `profile_update`.
   Destroy the user's other sessions and keep the current one when users
   change their own password.
-- Toggle, on by default.
+- Toggle, on for new installs; off for sites upgrading from before 3.4.0
+  (decided 2026-10-31).
 - **Check core first:** confirm what WordPress 6.5+ already destroys on reset
   and on profile change, so this only fills the gap.
 
@@ -391,6 +392,8 @@ Settled 2026-09-26 unless dated otherwise.
    add-on was still on sale.
 6. **"Exempt administrators" on existing installs:** unchanged on upgrade,
    with a one-time dismissible Notice suggesting it.
+   Self-unlock and sign out on password change are off on upgrade too
+   (2026-10-31).
 7. **Admin UI** (2026-10-26): the Foxe Plugin Admin Kit, ported from
    Convocept. It supersedes both the Foxe Labs Plugin UI port and Night
    shift.
@@ -474,9 +477,22 @@ Settled 2026-09-26 unless dated otherwise.
       instead of a second button of ours. Single-session writes go through `SessionStore`
       (also used by Logout Oldest and WP-CLI)
 - [x] B6 Logout Oldest and Logout All enforced as a session is created —
-      2026-10-29. Not yet tested against Nextend Social Login, a magic-link
-      plugin, WooCommerce My Account, Ultimate Member or MemberPress; the
-      compatibility page says so. `check_password` is no longer hooked
+      2026-10-29. Tested 2026-10-30 against WooCommerce 11.2 (My Account
+      login and Account details), Ultimate Member 2.14, Nextend Social
+      Login 3.1, Magic Login 2.8, Two Factor 0.17, Limit Login Attempts
+      Reloaded 3.3, WPS Hide Login 1.9 and application passwords; results
+      on the compatibility page. MemberPress (paid) is untested. Fixed from
+      that pass: Two Factor's password step ended sessions before the code
+      (room is now made at the end of the request, if the new session is
+      still there); Block New let Nextend's "Login restriction" through
+      (an empty password now means the plugin vouches for the user);
+      Ultimate Member and Limit Login Attempts Reloaded replaced the limit
+      message with "incorrect password". Left as is: LLAR counts each
+      refusal as a failed login. Second pass, 2026-10-31: User Switching
+      1.12 signed out the switched-to user's devices (sessions it marks
+      with `switched_from_id` are now left out), and a password copied in
+      during login by LDAP/SSO plugins triggered sign out on password
+      change (now ignored while a login is in progress). `check_password` is no longer hooked
       (2026-10-30): it ran on password checks that aren't logins
       (WooCommerce's current-password field, application passwords, 2FA)
       and ended sessions with no new one to follow
