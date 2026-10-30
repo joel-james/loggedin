@@ -27,6 +27,7 @@ class SettingsTest extends WP_UnitTestCase {
 	public function tear_down(): void {
 		delete_option( Settings::OPTION_KEY );
 		delete_option( Settings::ROLE_OPTION_KEY );
+		delete_option( Settings::CHANGED_OPTION_KEY );
 		remove_all_actions( 'init' );
 		remove_all_filters( 'loggedin_auto_logout_timeout' );
 
@@ -203,5 +204,33 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( Settings::ROLE_OPTION_KEY, $registered );
 		$this->assertSame( 'object', $registered[ Settings::OPTION_KEY ]['type'] );
 		$this->assertSame( 'object', $registered[ Settings::ROLE_OPTION_KEY ]['type'] );
+	}
+
+	public function test_changing_the_idle_timeout_is_recorded(): void {
+		delete_option( Settings::CHANGED_OPTION_KEY );
+
+		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 30 ) );
+
+		$this->assertEqualsWithDelta( time(), Plugin::instance()->auto_logout()->settings()->changed_at(), 2 );
+	}
+
+	public function test_changing_only_the_warning_is_not_recorded(): void {
+		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 30 ) );
+		delete_option( Settings::CHANGED_OPTION_KEY );
+
+		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 30, 'warning' => 120 ) );
+
+		$this->assertSame( 0, Plugin::instance()->auto_logout()->settings()->changed_at() );
+	}
+
+	public function test_reordering_the_role_map_is_not_recorded(): void {
+		update_option( Settings::ROLE_OPTION_KEY, array( 'editor' => 5, 'author' => 10 ) );
+		delete_option( Settings::CHANGED_OPTION_KEY );
+
+		update_option( Settings::ROLE_OPTION_KEY, array( 'author' => 10, 'editor' => 5 ) );
+		$this->assertSame( 0, Plugin::instance()->auto_logout()->settings()->changed_at() );
+
+		update_option( Settings::ROLE_OPTION_KEY, array( 'author' => 10 ) );
+		$this->assertGreaterThan( 0, Plugin::instance()->auto_logout()->settings()->changed_at() );
 	}
 }

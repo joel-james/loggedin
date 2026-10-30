@@ -51,6 +51,7 @@ final class Uninstaller {
 		LogoutEpoch::OPTION,
 		AutoLogoutSettings::OPTION_KEY,
 		AutoLogoutSettings::ROLE_OPTION_KEY,
+		AutoLogoutSettings::CHANGED_OPTION_KEY,
 		ExemptAdminsNotice::OPTION,
 		// Before 3.0, when each setting had its own option.
 		'loggedin_maximum',

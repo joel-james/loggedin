@@ -54,7 +54,15 @@ import './idle.scss';
 	const STORAGE_KEY = 'loggedin_auto_logout_active';
 
 	let lastActivity = Date.now();
-	let lastPing = Date.now();
+	// When the server last heard from this session. The server ends the
+	// session by its own stamp, which can be older than this page view:
+	// it rewrites the stamp only every `pingAfter` seconds.
+	let serverActive =
+		Math.min(
+			Date.now(),
+			( parseInt( config.lastActive, 10 ) || 0 ) * 1000
+		) || Date.now();
+	let lastPing = serverActive;
 	let warningTimer = null;
 	let logoutTimer = null;
 	let countdownTimer = null;
@@ -101,17 +109,27 @@ import './idle.scss';
 		body.append( 'nonce', config.nonce );
 
 		lastPing = Date.now();
+		serverActive = lastPing;
 
 		fetch( config.ajaxUrl, {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body.toString(),
-		} ).catch( function () {
-			// Network blip. The next burst of activity tries again, and
-			// the server-side check on the next page load is the real
-			// backstop either way.
-		} );
+		} )
+			.then( function ( response ) {
+				// admin-ajax answers a request with no session with a 400:
+				// the server has already signed this one out. The logout
+				// link would only ask "Do you really want to log out?".
+				if ( 400 === response.status && config.loginUrl ) {
+					window.location.href = config.loginUrl;
+				}
+			} )
+			.catch( function () {
+				// Network blip. The next burst of activity tries again, and
+				// the server-side check on the next page load is the real
+				// backstop either way.
+			} );
 	}
 
 	/**
@@ -148,11 +166,18 @@ import './idle.scss';
 			countdownTimer = null;
 		}
 
+		const returnTo = dialog && dialog.returnTo;
+
 		if ( dialog && dialog.root.parentNode ) {
 			dialog.root.parentNode.removeChild( dialog.root );
 		}
 
 		dialog = null;
+
+		// Back to wherever the user was before the dialog took focus.
+		if ( returnTo && returnTo.focus && document.contains( returnTo ) ) {
+			returnTo.focus();
+		}
 	}
 
 	/**
@@ -180,6 +205,7 @@ import './idle.scss';
 		root.setAttribute( 'role', 'alertdialog' );
 		root.setAttribute( 'aria-modal', 'true' );
 		root.setAttribute( 'aria-labelledby', 'loggedin-al-modal-title' );
+		root.setAttribute( 'aria-describedby', 'loggedin-al-modal-message' );
 
 		const box = document.createElement( 'div' );
 		box.className = 'loggedin-al-modal__box';
@@ -189,9 +215,11 @@ import './idle.scss';
 		title.id = 'loggedin-al-modal-title';
 		title.textContent = strings.title || '';
 
+		// Read once, as the dialog's description, when it opens. A live
+		// region here would announce the countdown every second.
 		const message = document.createElement( 'p' );
 		message.className = 'loggedin-al-modal__message';
-		message.setAttribute( 'aria-live', 'polite' );
+		message.id = 'loggedin-al-modal-message';
 
 		const actions = document.createElement( 'div' );
 		actions.className = 'loggedin-al-modal__actions';
@@ -214,7 +242,21 @@ import './idle.scss';
 		root.appendChild( box );
 		document.body.appendChild( root );
 
-		dialog = { root, message };
+		dialog = { root, message, returnTo: root.ownerDocument.activeElement };
+
+		// Keep Tab between the two buttons while the dialog is open.
+		root.addEventListener( 'keydown', function ( event ) {
+			if ( 'Tab' !== event.key ) {
+				return;
+			}
+
+			const from = event.shiftKey ? stay : out;
+
+			if ( root.ownerDocument.activeElement === from ) {
+				event.preventDefault();
+				( event.shiftKey ? out : stay ).focus();
+			}
+		} );
 
 		/**
 		 * Repaint the countdown text.
@@ -255,18 +297,29 @@ import './idle.scss';
 	/**
 	 * Restart the warning / logout timers from a given activity time.
 	 *
-	 * @param {number} from Timestamp the countdown runs from.
+	 * @param {number} from Latest activity this tab knows of.
 	 * @return {void}
 	 */
 	function schedule( from ) {
 		window.clearTimeout( warningTimer );
 		window.clearTimeout( logoutTimer );
 
-		const logoutAt = from + timeoutMs;
+		// The session ends when the server says, so count from its stamp
+		// when that is the older one.
+		const logoutAt = Math.min( from, serverActive ) + timeoutMs;
 		const untilLogout = logoutAt - Date.now();
 
+		const warn = function () {
+			unlessUnheard( function () {
+				openDialog( logoutAt );
+			} );
+		};
+		const end = function () {
+			unlessUnheard( signOut );
+		};
+
 		if ( untilLogout <= 0 ) {
-			signOut();
+			end();
 			return;
 		}
 
@@ -274,15 +327,34 @@ import './idle.scss';
 			const untilWarning = untilLogout - warningMs;
 
 			if ( untilWarning <= 0 ) {
-				openDialog( logoutAt );
+				warn();
 			} else {
-				warningTimer = window.setTimeout( function () {
-					openDialog( logoutAt );
-				}, untilWarning );
+				warningTimer = window.setTimeout( warn, untilWarning );
 			}
 		}
 
-		logoutTimer = window.setTimeout( signOut, untilLogout );
+		logoutTimer = window.setTimeout( end, untilLogout );
+	}
+
+	/**
+	 * Run a timer's action, unless the server hasn't heard of the
+	 * latest activity.
+	 *
+	 * The timers can run from the server's older stamp. If the user has
+	 * done something since, tell the server and count again from that
+	 * activity instead of warning someone who isn't idle.
+	 *
+	 * @param {Function} action Warning or sign-out.
+	 * @return {void}
+	 */
+	function unlessUnheard( action ) {
+		if ( lastActivity > serverActive ) {
+			ping();
+			schedule( lastActivity );
+			return;
+		}
+
+		action();
 	}
 
 	/**
@@ -356,7 +428,8 @@ import './idle.scss';
 	// rather than waiting for the stale timeout to fire.
 	document.addEventListener( 'visibilitychange', function () {
 		if ( ! document.hidden ) {
-			schedule( Math.max( lastActivity, shared() ) );
+			lastActivity = Math.max( lastActivity, shared() );
+			schedule( lastActivity );
 		}
 	} );
 

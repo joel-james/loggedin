@@ -54,6 +54,13 @@ final class Settings {
 	public const ACTIVITY_META_KEY = 'loggedin_auto_logout_activity';
 
 	/**
+	 * Option holding when an idle timeout was last changed, as a unix timestamp.
+	 *
+	 * @since 3.4.0
+	 */
+	public const CHANGED_OPTION_KEY = 'loggedin_auto_logout_changed';
+
+	/**
 	 * Largest idle timeout we'll accept, in minutes (30 days).
 	 *
 	 * An upper bound keeps a fat-fingered value from producing an
@@ -113,6 +120,78 @@ final class Settings {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_settings' ) );
+
+		add_action( 'add_option_' . self::OPTION_KEY, array( $this, 'note_added' ), 10, 2 );
+		add_action( 'update_option_' . self::OPTION_KEY, array( $this, 'note_updated' ), 10, 3 );
+		add_action( 'add_option_' . self::ROLE_OPTION_KEY, array( $this, 'note_added' ), 10, 2 );
+		add_action( 'update_option_' . self::ROLE_OPTION_KEY, array( $this, 'note_updated' ), 10, 3 );
+	}
+
+	/**
+	 * Note a change when either option is first stored.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param string $option Option name.
+	 * @param mixed  $value  Stored value.
+	 *
+	 * @return void
+	 */
+	public function note_added( $option, $value ): void {
+		$this->note_updated( array(), $value, $option );
+	}
+
+	/**
+	 * Note a change when an idle timeout changes.
+	 *
+	 * Only the timeouts count: the warning and the two lifetimes don't
+	 * move any session's idle deadline.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param mixed  $old_value Previous value.
+	 * @param mixed  $value     New value.
+	 * @param string $option    Option name.
+	 *
+	 * @return void
+	 */
+	public function note_updated( $old_value, $value, $option = self::OPTION_KEY ): void {
+		$old = is_array( $old_value ) ? $old_value : array();
+		$new = is_array( $value ) ? $value : array();
+
+		if ( self::OPTION_KEY === $option ) {
+			$old = (int) ( $old['idle_timeout'] ?? 0 );
+			$new = (int) ( $new['idle_timeout'] ?? 0 );
+		}
+
+		if ( $old != $new ) { // phpcs:ignore Universal.Operators.StrictComparisons.LooseNotEqual -- Role maps are equal whatever their key order.
+			$this->note_change();
+		}
+	}
+
+	/**
+	 * Record that an idle timeout changed, now.
+	 *
+	 * Autoloaded: the idle guard reads it for any session it hasn't
+	 * stamped yet.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	public function note_change(): void {
+		update_option( self::CHANGED_OPTION_KEY, time(), true );
+	}
+
+	/**
+	 * When an idle timeout was last changed.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return int Unix timestamp, or 0 if never.
+	 */
+	public function changed_at(): int {
+		return (int) get_option( self::CHANGED_OPTION_KEY, 0 );
 	}
 
 	/**

@@ -46,6 +46,7 @@ class IdleGuardTest extends WP_UnitTestCase {
 	public function tear_down(): void {
 		delete_option( Settings::OPTION_KEY );
 		delete_option( Settings::ROLE_OPTION_KEY );
+		delete_option( Settings::CHANGED_OPTION_KEY );
 		delete_metadata( 'user', 0, Settings::ACTIVITY_META_KEY, '', true );
 
 		unset( $_COOKIE[ LOGGED_IN_COOKIE ] );
@@ -228,6 +229,50 @@ class IdleGuardTest extends WP_UnitTestCase {
 		);
 	}
 
+	/**
+	 * Move the signed-in session's login time into the past.
+	 *
+	 * @param int $user_id User id.
+	 * @param int $login   Unix timestamp.
+	 *
+	 * @return void
+	 */
+	private function set_login( int $user_id, int $login ): void {
+		$manager = WP_Session_Tokens::get_instance( $user_id );
+		$session = $manager->get( $this->token );
+
+		$session['login'] = $login;
+		$manager->update( $this->token, $session );
+	}
+
+	public function test_turning_idle_logout_on_spares_sessions_older_than_the_timeout(): void {
+		add_filter( 'wp_doing_ajax', '__return_true' );
+
+		$user_id = $this->sign_in();
+		$this->set_login( $user_id, time() - HOUR_IN_SECONDS );
+
+		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 15 ) );
+
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
+
+		$this->assertTrue( is_user_logged_in() );
+		$this->assertNotNull( WP_Session_Tokens::get_instance( $user_id )->get( $this->token ) );
+	}
+
+	public function test_an_unstamped_session_ages_out_from_the_last_change(): void {
+		add_filter( 'wp_doing_ajax', '__return_true' );
+
+		$user_id = $this->sign_in();
+		$this->set_login( $user_id, time() - HOUR_IN_SECONDS );
+
+		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 15 ) );
+		update_option( Settings::CHANGED_OPTION_KEY, time() - ( 16 * MINUTE_IN_SECONDS ) );
+
+		Plugin::instance()->auto_logout()->idle_guard()->enforce();
+
+		$this->assertFalse( is_user_logged_in() );
+	}
+
 	public function test_enforce_leaves_other_devices_signed_in(): void {
 		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 15 ) );
 		add_filter( 'wp_doing_ajax', '__return_true' );
@@ -382,5 +427,32 @@ class IdleGuardTest extends WP_UnitTestCase {
 			'loggedin_auto_logout',
 			$error->get_error_data()['login_url']
 		);
+	}
+
+	public function test_idle_sign_outs_land_on_the_login_screen_with_the_flag(): void {
+		$url = Plugin::instance()->auto_logout()->idle_guard()->rest_error( null )->get_error_data()['login_url'];
+
+		// On the login URL itself, where login_message() can read it.
+		$this->assertStringStartsWith( wp_login_url(), $url );
+		wp_parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $query );
+		$this->assertSame( '1', $query['loggedin_auto_logout'] ?? null );
+	}
+
+	public function test_the_script_counts_from_the_servers_stamp(): void {
+		update_option( Settings::OPTION_KEY, array( 'idle_timeout' => 15 ) );
+
+		$user_id = $this->sign_in();
+		$stamp   = time() - 90;
+		$this->set_last_active( $user_id, $stamp );
+
+		Plugin::instance()->auto_logout()->idle_guard()->enqueue();
+
+		$data = (string) wp_scripts()->get_data( 'loggedin-idle', 'data' );
+
+		$this->assertStringContainsString( '"lastActive":"' . $stamp . '"', $data );
+		$this->assertStringContainsString( 'loggedin_auto_logout=1', $data );
+
+		wp_dequeue_script( 'loggedin-idle' );
+		wp_deregister_script( 'loggedin-idle' );
 	}
 }

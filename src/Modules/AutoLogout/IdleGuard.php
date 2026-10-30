@@ -183,12 +183,7 @@ final class IdleGuard {
 			return;
 		}
 
-		// Fall back to the login time so a session created before idle
-		// logout was turned on — or one whose stamp has been pruned —
-		// still ages out instead of being treated as freshly active.
-		$map         = $this->activity_map( $user->ID );
-		$verifier    = $this->store->verifier( $token );
-		$last_active = (int) ( $map[ $verifier ] ?? $session['login'] ?? 0 );
+		$last_active = $this->last_active( $user->ID, $token, $session );
 		$idle_for    = time() - $last_active;
 
 		if ( $last_active > 0 && $idle_for >= $timeout ) {
@@ -264,7 +259,7 @@ final class IdleGuard {
 		$asset = Plugin::asset( 'idle' );
 
 		wp_enqueue_script( self::HANDLE, Plugin::url() . 'build/idle.js', $asset['dependencies'], $asset['version'], true );
-		wp_localize_script( self::HANDLE, 'loggedinAutoLogout', $this->script_data( $timeout ) );
+		wp_localize_script( self::HANDLE, 'loggedinAutoLogout', $this->script_data( $user->ID, $timeout ) );
 
 		if ( is_readable( Plugin::dir() . 'build/idle.css' ) ) {
 			wp_enqueue_style( self::HANDLE, Plugin::url() . 'build/idle.css', array(), $asset['version'] );
@@ -277,27 +272,35 @@ final class IdleGuard {
 	 *
 	 * Seconds throughout; the script converts to milliseconds once.
 	 *
+	 * `lastActive` is the server's own stamp, which can be older than
+	 * this page view: stamps are only rewritten every `pingAfter`
+	 * seconds. The script counts from it, so it never lets the session
+	 * outlive what the server will accept.
+	 *
 	 * @since 3.4.0
 	 *
+	 * @param int $user_id Current user id.
 	 * @param int $timeout The current user's idle timeout, in seconds.
 	 *
 	 * @return array<string, mixed>
 	 */
-	private function script_data( int $timeout ): array {
+	private function script_data( int $user_id, int $timeout ): array {
 		// The warning can't eat the whole timeout — a 60s warning on a
 		// 1-minute timeout would open the dialog the instant the page
 		// loads. Cap it at half the window.
 		$warning = (int) min( $this->settings->all()['warning'], (int) floor( $timeout / 2 ) );
 
 		return array(
-			'timeout'   => $timeout,
-			'warning'   => $warning,
-			'pingAfter' => $this->write_interval( $timeout ),
-			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-			'action'    => self::ACTION,
-			'nonce'     => wp_create_nonce( self::NONCE ),
-			'logoutUrl' => wp_logout_url( $this->notice_url() ),
-			'i18n'      => array(
+			'timeout'    => $timeout,
+			'warning'    => $warning,
+			'pingAfter'  => $this->write_interval( $timeout ),
+			'lastActive' => $this->last_active( $user_id, wp_get_session_token() ),
+			'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+			'action'     => self::ACTION,
+			'nonce'      => wp_create_nonce( self::NONCE ),
+			'logoutUrl'  => wp_logout_url( $this->notice_url() ),
+			'loginUrl'   => $this->notice_url(),
+			'i18n'       => array(
 				'title'    => __( 'Still there?', 'loggedin' ),
 				/* translators: %s: countdown, e.g. "1:59". */
 				'message'  => __( 'You have been inactive for a while. For your security you will be signed out in %s.', 'loggedin' ),
@@ -369,7 +372,7 @@ final class IdleGuard {
 			return;
 		}
 
-		wp_safe_redirect( wp_login_url( $this->notice_url() ) );
+		wp_safe_redirect( $this->notice_url() );
 		exit;
 	}
 
@@ -393,7 +396,7 @@ final class IdleGuard {
 			__( 'You were signed out because your session was inactive.', 'loggedin' ),
 			array(
 				'status'    => 401,
-				'login_url' => wp_login_url( $this->notice_url() ),
+				'login_url' => $this->notice_url(),
 			)
 		);
 	}
@@ -444,6 +447,40 @@ final class IdleGuard {
 			Settings::ACTIVITY_META_KEY,
 			$this->prune( $map, $verifier, $now - $timeout )
 		);
+	}
+
+	/**
+	 * When a session was last active, as far as the server knows.
+	 *
+	 * A session with no stamp yet counts from its login, or from when
+	 * the timeout last changed if that is later. Login alone would sign
+	 * out, the moment idle logout is turned on, every session older than
+	 * the timeout, the admin who turned it on included. A session whose
+	 * stamp was pruned still ages out: its window had already closed.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param int                       $user_id User id.
+	 * @param string                    $token   Raw session token.
+	 * @param array<string, mixed>|null $session The session, if already read.
+	 *
+	 * @return int Unix timestamp, or 0 for an unknown session.
+	 */
+	private function last_active( int $user_id, string $token, ?array $session = null ): int {
+		$map      = $this->activity_map( $user_id );
+		$verifier = $this->store->verifier( $token );
+
+		if ( isset( $map[ $verifier ] ) ) {
+			return (int) $map[ $verifier ];
+		}
+
+		$session = $session ?? WP_Session_Tokens::get_instance( $user_id )->get( $token );
+
+		if ( empty( $session ) ) {
+			return 0;
+		}
+
+		return max( (int) ( $session['login'] ?? 0 ), $this->settings->changed_at() );
 	}
 
 	/**
@@ -511,17 +548,19 @@ final class IdleGuard {
 	}
 
 	/**
-	 * Home URL carrying the "you were signed out" flag.
+	 * Login screen URL carrying the "you were signed out" flag.
 	 *
-	 * Used as the post-logout destination so the login screen knows to
-	 * explain what happened.
+	 * Where every idle sign-out ends: the server's redirect, the script's
+	 * logout link and the REST error all send the user here, so the
+	 * login screen can explain what happened. The flag must be on the
+	 * login URL itself: inside `redirect_to` the screen never sees it.
 	 *
 	 * @since 3.4.0
 	 *
 	 * @return string
 	 */
 	private function notice_url(): string {
-		return add_query_arg( self::NOTICE_ARG, '1', home_url( '/' ) );
+		return add_query_arg( self::NOTICE_ARG, '1', wp_login_url() );
 	}
 
 	/**
