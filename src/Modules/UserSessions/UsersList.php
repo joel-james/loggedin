@@ -162,7 +162,7 @@ final class UsersList {
 			esc_attr( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $time ) ),
 			esc_html(
 				sprintf(
-					/* translators: %s: Time since, e.g. "3 hours". */
+					/* translators: %s: Time span, e.g. "5 minutes". */
 					__( '%s ago', 'loggedin' ),
 					human_time_diff( $time )
 				)

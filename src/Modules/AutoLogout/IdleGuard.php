@@ -11,30 +11,22 @@
  * `{ verifier: timestamp }` map, one entry per device — and never
  * inside WordPress's `session_tokens` blob.
  *
- * That separation is deliberate and load-bearing. `session_tokens` holds
- * every session for a user in one serialised value, and both core's
- * `WP_User_Meta_Session_Tokens::update_session()` and the Active
- * Sessions add-on's per-session sign-out mutate it by reading the whole
- * blob, changing one key, and writing the whole blob back, with no
- * locking. Stamping activity in there would have turned a rare race into
- * a routine one: an admin signing a session out could have had it
- * resurrected by the same user's next activity write landing a
- * millisecond later. Writing our own row means the two never contend.
+ * That separation matters. `session_tokens` holds every session in one
+ * serialised value, and core and the Active Sessions add-on both rewrite
+ * the whole blob, unlocked, to change one session. Stamping activity
+ * there would make a routine race of a rare one: a session an admin
+ * signed out could come back with the user's next activity write.
  *
- * The map is keyed by the session verifier — the SHA-256 of the raw
- * token, which is exactly what core hashes tokens to and what Active
- * Sessions exposes as `token_hash` — so a session row and its activity
- * stamp can be joined later without either side changing shape.
+ * The map is keyed by the session verifier (the SHA-256 of the raw
+ * token, which Active Sessions exposes as `token_hash`), so a session
+ * and its stamp can be joined.
  *
- * Writes are throttled to at most one per quarter-timeout (and never
- * more than one a minute), so a busy site doesn't pay a user-meta write
- * on every page view. Entries older than the timeout are pruned on each
- * write: such a session can never be renewed (the next request from that
- * device signs it out), so an expired stamp has no reader left.
+ * Writes are throttled to one per quarter-timeout, and never more than
+ * one a minute. Entries older than the timeout are pruned on each write:
+ * that device's next request signs it out, so nothing reads them.
  *
- * Auto logout deliberately does no polling: the browser script runs a
- * local timer and only contacts the server when the user is genuinely
- * interacting and the stored stamp is about to go stale.
+ * No polling: the browser script runs a local timer and only contacts
+ * the server while the user is active and the stamp is going stale.
  *
  * @since 3.4.0
  * @package FoxeLabs\Loggedin\Modules\AutoLogout
