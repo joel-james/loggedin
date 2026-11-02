@@ -515,6 +515,6 @@ Settled 2026-09-26 unless dated otherwise.
       settings endpoint can't save the role map. Core CI now tests
       WordPress 6.5, the new minimum, instead of 6.0. The add-ons' pack
       scripts check `composer.json` and `Plugin::VERSION` too, after
-      `composer.json` shipped a release behind in all four
+      `composer.json` was found a release behind in all four
 - [ ] Phase C — Login History, Membership Limits, Login Alerts, Active Sessions upgrade
 - [ ] Phase D — bundle plan, discovery
