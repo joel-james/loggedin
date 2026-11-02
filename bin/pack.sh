@@ -27,7 +27,7 @@ INCLUDES=(
 	"readme.txt"
 	"license"
 	"composer.json"
-	"includes"
+	"src"
 	"languages"
 	"build"
 	"vendor"

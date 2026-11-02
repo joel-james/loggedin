@@ -3,24 +3,25 @@
  * Plugin entry file.
  *
  * Defines the path / file constants, loads the Composer autoloader,
- * loads the text domain, and hands off to {@see Core::instance()} to
- * boot every module in phased order.
+ * and hands off to {@see Plugin::boot()}, which builds and wires every
+ * service.
  *
  * This file is intentionally minimal — the rule of thumb is "no
  * runtime logic in the bootstrap." Each subsystem (settings storage,
  * session guard, admin UI, REST API, Freemius) lives behind its own
- * class under `includes/` and registers its own hooks from there.
+ * class under `src/`, built and wired by `Plugin`.
  *
+ * @since             1.0.0
  * @package           FoxeLabs\Loggedin
  * @author            Joel James
  * @copyright         2025 Joel James
  * @license           GPL-2.0+
  *
  * @wordpress-plugin
- * Plugin Name:       Loggedin - Session Manager, Limit Concurrent Logins & Force Logout
+ * Plugin Name:       Loggedin - Session Manager: Limit Concurrent Logins & Auto Logout
  * Plugin URI:        https://foxelabs.com/software/plugins/loggedin
- * Description:       Limit an account to a specific number of simultaneous logins across all devices.
- * Version:           3.3.1
+ * Description:       Session and login manager. Limit concurrent logins, stop account sharing, auto logout idle users and force logout any device.
+ * Version:           3.4.0
  * Author:            Joel James
  * Author URI:        https://foxelabs.com/
  * Donate link:       https://paypal.me/JoelCJ
@@ -29,7 +30,7 @@
  * Text Domain:       loggedin
  * Domain Path:       /languages
  * Requires PHP:      7.4
- * Requires at least: 6.0
+ * Requires at least: 6.5
  */
 
 namespace FoxeLabs\Loggedin;
@@ -43,6 +44,8 @@ defined( 'WPINC' ) || die;
  * the plugin (the autoloader, the React bundle in `build/`, the
  * language files, etc.). Defined here once so individual classes
  * can read it via `Plugin::dir()` without ever recomputing it.
+ *
+ * @since 3.0.0
  */
 define( 'LOGGEDIN_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -52,6 +55,8 @@ define( 'LOGGEDIN_DIR', plugin_dir_path( __FILE__ ) );
  * Freemius needs the main plugin file path during instance creation
  * (it derives the plugin basename from it). Captured here so we don't
  * have to thread it through every constructor.
+ *
+ * @since 3.0.0
  */
 define( 'LOGGEDIN_FILE', __FILE__ );
 
@@ -65,8 +70,8 @@ if ( ! function_exists( __NAMESPACE__ . '\\init' ) ) {
 	 * first init call. The function:
 	 *
 	 *   1. Pulls in the Composer autoloader.
-	 *   2. Hands off to {@see Core::instance()}, which is responsible
-	 *      for wiring every module in order.
+	 *   2. Hands off to {@see Plugin::boot()}, which builds and wires
+	 *      every service.
 	 *
 	 * The text domain is not loaded here: since WordPress 4.6 core
 	 * loads translations for a wordpress.org-hosted plugin on first
@@ -81,7 +86,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\init' ) ) {
 
 		alias_legacy_classes();
 
-		Core::instance();
+		Plugin::instance()->boot();
 	}
 }
 

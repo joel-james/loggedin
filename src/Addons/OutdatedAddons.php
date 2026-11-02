@@ -1,0 +1,229 @@
+<?php
+/**
+ * Add-ons older than the settings screen.
+ *
+ * Loggedin 3.4.0 rebuilt its settings screen on the Foxe Plugin Admin
+ * Kit. Add-ons built before it still work (their panels and tabs are
+ * drawn by the compatibility layer in `assets/src/admin/app/pages.js`), but
+ * they look out of place until they're updated. This tells the admin
+ * which ones to update.
+ *
+ * Only add-ons that draw on Loggedin's screen are listed: an add-on
+ * without settings there has nothing to look out of place.
+ *
+ * The Plugins screen gets a WordPress notice. Loggedin's own screen draws
+ * the same message inside the app, from the script vars.
+ *
+ * @since 3.4.0
+ * @package FoxeLabs\Loggedin\Addons
+ */
+
+declare( strict_types = 1 );
+
+namespace FoxeLabs\Loggedin\Addons;
+
+defined( 'WPINC' ) || die;
+
+/**
+ * Asks the admin to update add-ons built for the old settings screen.
+ *
+ * @since 3.4.0
+ */
+final class OutdatedAddons {
+
+	/**
+	 * First version of each add-on built for the new settings screen.
+	 *
+	 * @since 3.4.0
+	 */
+	private const MINIMUM = array(
+		'loggedin-active-sessions' => '1.2.0',
+		'loggedin-limit-per-role'  => '2.2.0',
+		'loggedin-realtime-logout' => '2.2.0',
+	);
+
+	/**
+	 * Add-ons registry.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @var Addons
+	 */
+	private Addons $addons;
+
+	/**
+	 * Set up the dependencies.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param Addons $addons Add-ons registry.
+	 */
+	public function __construct( Addons $addons ) {
+		$this->addons = $addons;
+	}
+
+	/**
+	 * Register hooks.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	public function register(): void {
+		add_action( 'admin_notices', array( $this, 'notice' ) );
+		add_filter( 'loggedin_admin_script_vars', array( $this, 'script_vars' ) );
+	}
+
+	/**
+	 * Add-ons running a version older than the one the screen needs.
+	 *
+	 * Reads each add-on's version from its plugin header, through the
+	 * `main_file` it registers with, so an add-on doesn't have to
+	 * report its own version.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return array<int, array{name: string, version: string, minimum: string}>
+	 */
+	public function outdated(): array {
+		/**
+		 * Filter the first add-on versions built for the new settings screen.
+		 *
+		 * @since 3.4.0
+		 *
+		 * @param array<string, string> $minimum Versions keyed by add-on slug.
+		 */
+		$minimum  = (array) apply_filters( 'loggedin_addon_minimum_versions', self::MINIMUM );
+		$outdated = array();
+
+		foreach ( $this->addons->get_registered_addons() as $args ) {
+			$slug = (string) ( $args['slug'] ?? '' );
+			$file = (string) ( $args['main_file'] ?? '' );
+
+			if ( ! isset( $minimum[ $slug ] ) || '' === $file || ! is_readable( $file ) ) {
+				continue;
+			}
+
+			$header = get_file_data(
+				$file,
+				array(
+					'name'    => 'Plugin Name',
+					'version' => 'Version',
+				)
+			);
+
+			if ( '' !== $header['version'] && version_compare( $header['version'], (string) $minimum[ $slug ], '<' ) ) {
+				$outdated[] = array(
+					'name'    => '' !== $header['name'] ? $header['name'] : $slug,
+					'version' => $header['version'],
+					'minimum' => (string) $minimum[ $slug ],
+				);
+			}
+		}
+
+		return $outdated;
+	}
+
+	/**
+	 * List the outdated add-ons on the Plugins screen.
+	 *
+	 * Shown to people who can update plugins. Loggedin's own screen shows
+	 * it through {@see self::script_vars()} instead.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return void
+	 */
+	public function notice(): void {
+		$screen = get_current_screen();
+
+		if ( ! current_user_can( 'update_plugins' ) || ! $screen || 'plugins' !== $screen->id ) {
+			return;
+		}
+
+		$message = $this->message();
+
+		if ( null === $message ) {
+			return;
+		}
+
+		$items = '';
+
+		foreach ( $message['items'] as $item ) {
+			$items .= '<li>' . esc_html( $item ) . '</li>';
+		}
+
+		printf(
+			'<div class="notice notice-warning"><p><strong>%1$s</strong> %2$s</p><ul class="ul-disc">%3$s</ul><p><a href="%4$s">%5$s</a></p></div>',
+			esc_html( $message['title'] ),
+			esc_html( $message['text'] ),
+			wp_kses( $items, array( 'li' => array() ) ),
+			esc_url( $message['actions'][0]['href'] ),
+			esc_html( $message['actions'][0]['label'] )
+		);
+	}
+
+	/**
+	 * Add the list to the notices Loggedin's screen shows.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @param array<string, mixed> $vars Script vars for the admin app.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function script_vars( array $vars ): array {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			return $vars;
+		}
+
+		$message = $this->message();
+
+		if ( null !== $message ) {
+			$vars['notices'][] = $message;
+		}
+
+		return $vars;
+	}
+
+	/**
+	 * The notice, in the shape the admin app draws, or null when nothing is outdated.
+	 *
+	 * @since 3.4.0
+	 *
+	 * @return array{id: string, tone: string, title: string, text: string, items: array<int, string>, actions: array<int, array{label: string, href: string}>}|null
+	 */
+	private function message(): ?array {
+		$outdated = $this->outdated();
+
+		if ( empty( $outdated ) ) {
+			return null;
+		}
+
+		$items = array();
+
+		foreach ( $outdated as $addon ) {
+			$items[] = sprintf(
+				/* translators: 1: Add-on name, 2: Installed version, 3: First version that fits the new screen. */
+				__( '%1$s %2$s: update to %3$s or later.', 'loggedin' ),
+				$addon['name'],
+				$addon['version'],
+				$addon['minimum']
+			);
+		}
+
+		return array(
+			'id'      => 'outdated-addons',
+			'tone'    => 'warning',
+			'title'   => _n( 'A Loggedin add-on needs an update.', 'Some Loggedin add-ons need an update.', count( $outdated ), 'loggedin' ),
+			'text'    => _n( 'It was made for the old settings screen. It still works, but its settings may look out of place until it is updated.', 'They were made for the old settings screen. They still work, but their settings may look out of place until they are updated.', count( $outdated ), 'loggedin' ),
+			'items'   => $items,
+			'actions' => array(
+				array(
+					'label' => __( 'Go to Updates', 'loggedin' ),
+					'href'  => esc_url_raw( admin_url( 'update-core.php' ) ),
+				),
+			),
+		);
+	}
+}

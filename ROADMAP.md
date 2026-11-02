@@ -52,8 +52,9 @@ on the new components.
 4. **Add-ons update independently of core.** Every JS and PHP extension point
    that add-ons use today keeps working through at least one release after it
    is replaced:
-   - JS: `loggedin.admin.tabs`, `loggedin.settings.panels` and
-     `loggedin.settings.force_logout.cross_sell`.
+   - JS: `loggedin.admin.tabs`, `loggedin.settings.panels`,
+     `loggedin.settings.force_logout.cross_sell`, and the `window.loggedin.ui`
+     components (Active Sessions draws its page with them).
    - PHP: the add-on registration hooks.
 5. **Backward-compatible defaults.** An existing install behaves the same
    after upgrading until the admin changes a setting. New defaults apply to
@@ -177,8 +178,9 @@ Build on the Phase A components. Each item lists the approach, then what to
 check before or while building it.
 
 ### B1. Blocked-login self-unlock (highest priority)
-When Block New rejects a login, the password has already been verified. Use
-that moment:
+`wp_authenticate_user` runs before WordPress checks the password, so Block
+New checks it itself first: only a correct password learns the limit was
+reached (a wrong one gets WordPress's own error). Use that moment:
 - Issue a short-lived unlock token and store it hashed in its own user meta.
   It expires after 15 minutes and is single-use.
 - Append "Email me a link to sign out my other devices" to the error.
@@ -216,7 +218,10 @@ that moment:
   History add-on and its dormant-accounts report.
 - Row action and bulk action: "Sign out everywhere".
 - Counts only, with no per-device detail (constraint 3).
-- Add a WP-CLI `last_login` field to `sessions list`.
+- ~~Add a WP-CLI `last_login` field to `sessions list`.~~ Dropped: that
+  command lists one user's sessions, and each row already has its `login`
+  time. The per-user value is plain user meta (`wp user meta get <user>
+  loggedin_last_login`).
 
 ### B4. "Your sessions" on the profile screen
 - On the user's own profile, list their sessions: device, IP (shortened),
@@ -234,7 +239,8 @@ that moment:
 - Hook `after_password_reset` and password changes through `profile_update`.
   Destroy the user's other sessions and keep the current one when users
   change their own password.
-- Toggle, on by default.
+- Toggle, on for new installs; off for sites upgrading from before 3.4.0
+  (decided 2026-10-31).
 - **Check core first:** confirm what WordPress 6.5+ already destroys on reset
   and on profile change, so this only fills the gap.
 
@@ -275,14 +281,13 @@ a port, not a rebuild.
 - Keep the activity stamp in its own user meta row, never in
   `session_tokens` (constraint 2). Port
   `test_stamping_never_writes_the_session_tokens_blob` with it.
-- **The add-on still active:** core detects it, leaves its own guard off so
-  nothing is enforced twice, and shows one dismissible Notice saying auto
-  logout is now part of Loggedin and the add-on can be deactivated.
+- **No takeover of the add-on:** it never sold, so no site runs it. Core
+  doesn't detect it or stop it booting (decided 2026-10-30).
 - **Fix in the port:** an idle logout during a REST request returns a bare
   401 that neither admin React app handles. Return an error the apps
   recognise and send the user to the login screen.
-- **Retire the product:** check Freemius (id 38081) for any licence first,
-  then stop selling it and remove it from the Add-ons page and the bundle.
+- **Retire the product:** archive it in Freemius. The Add-ons page lists
+  only published add-ons from the API, so core needs no code to hide it.
   Move the docs from `software/loggedin/addons/auto-logout.md` to a core
   feature page, with a redirect from the old URL. Archive the
   `loggedin-auto-logout` repository after core ships.
@@ -387,6 +392,8 @@ Settled 2026-09-26 unless dated otherwise.
    add-on was still on sale.
 6. **"Exempt administrators" on existing installs:** unchanged on upgrade,
    with a one-time dismissible Notice suggesting it.
+   Self-unlock and sign out on password change are off on upgrade too
+   (2026-10-31).
 7. **Admin UI** (2026-10-26): the Foxe Plugin Admin Kit, ported from
    Convocept. It supersedes both the Foxe Labs Plugin UI port and Night
    shift.
@@ -395,14 +402,111 @@ Settled 2026-09-26 unless dated otherwise.
 
 ## Progress
 
-- [ ] A1 kit components and tokens, ported from Convocept
-- [ ] A2 screen: sidebar, Login limits, Sessions, Add-ons, Help
-- [ ] A3 `loggedin_settings_schema` and legacy panel/tab compatibility —
-      written on `feature/plugin-ui` (`5e27361`, Night shift); carry over
-      onto the kit
-- [ ] A3 minimum-core-version Notice for outdated add-ons
-- [ ] A5 QA
-- [ ] Phase A4 — add-on UI migrations
-- [ ] Phase B — core features B1–B8
+- [x] A1 kit components and tokens, ported from Convocept — branch
+      `feature/admin-kit`, 2026-10-26. 2026-10-29: TextareaField and
+      TableCard added; the kit is exposed to add-on scripts as
+      `window.loggedin.ui`. Not ported: Badge (no screen uses it yet) and
+      BundleCard (waits for the bundle plan in Phase D)
+- [x] A2 screen: sidebar, Login limits, Lockout & recovery, Auto logout,
+      Sessions, Add-ons, Help (BundleCard waits for the bundle plan in Phase D).
+      Pages are addressed with `&tab=`; old `#hash` links still work.
+      2026-10-29: AddonHint for Limit Per User beside the Limit Per Role one;
+      placeholder cards while the Add-ons list loads
+- [x] A3 `loggedin_settings_schema` (pages, cards, fields) and legacy
+      panel/tab compatibility, checked with Limit Per Role and Real-time Logout.
+      2026-10-29: `role-table` fields, fields without a `key` (whole option),
+      `default_from`, `unit_one`
+- [x] A3 notice for add-ons older than the new screen (Active Sessions 1.2.0,
+      Limit Per Role 2.2.0, Real-time Logout 2.2.0) — 2026-10-29
+- [x] A4 add-on UI migrations — 2026-10-29, merged to each repo's `dev`
+      branch on 2026-10-30:
+      Active Sessions 1.2.0 (Manage › Active sessions on the kit),
+      Limit Per Role 2.2.0 and Real-time Logout 2.2.0 (schema cards, no admin
+      bundle on core 3.4.0+), Limit Per User 2.2.0 (profile field restyled;
+      security fix: the field now needs `edit_users`, so users can no longer
+      raise their own limit from their profile).
+      Each keeps its old UI on core before 3.4.0
+- [x] A5 QA — 2026-10-30. Done: PHPUnit on WordPress 7.1 and 6.5.14, JS lint, phpcs.
+      Found and fixed: the bundles need `react-jsx-runtime`, which WordPress
+      only registers from 6.6, so 6.5 showed a blank screen; core now
+      registers a shim on its screen.
+      Browser pass, 2026-10-29, WordPress 7.1 with all add-ons on their
+      `feature/admin-kit` branches: every page at 1280px and 375px (no
+      sideways scroll), RTL, saving, validation, Discard, notices, the Users
+      list and profile screens.
+      Found and fixed: role rows misaligned (the select's label had an extra
+      8px gap), Active Sessions table wider than its card at 1280px, focus
+      lost after removing a role row, the Message textarea's label not
+      linked, profile Sign out buttons without a device name for screen
+      readers, stacked role rows running together on phones.
+      Second pass, 2026-10-30, on branch `feature/a5-qa`: 782px (no sideways
+      scroll; the Active Sessions table scrolls inside its card), all nine
+      admin colour schemes (the accent follows each), contrast, keyboard-only
+      pass, high contrast CSS, core 3.3.1 with the new add-ons and core 3.4.0
+      with the released ones (no errors, legacy panels and the update notice
+      show), and the login flows end to end with curl and the browser.
+      Found and fixed: the active sidebar item and the Add-ons page's
+      "Refresh list" fell below 4.5:1 in most schemes (now one shade darker);
+      the number field lost its focus ring in high contrast mode; Active
+      Sessions dropped keyboard focus when its inline confirm opened or
+      closed, and its Sign out buttons had no session in their name; the
+      idle warning announced its countdown every second, let Tab leave it
+      and didn't return focus. Auto logout: turning it on signed out at once
+      every session older than the timeout, the admin's included; the
+      "signed out because your session was inactive" notice never showed;
+      and the server could end a session up to a quarter of the timeout
+      before the browser's warning.
+      Not fixable here: WordPress 7.1's primary button text (#eff0f2 on the
+      theme colour) is just under 4.5:1 in some schemes, and the DataViews
+      checkbox edge is 2.96:1. Windows high contrast mode itself was checked
+      in the CSS only, not on Windows
+- [x] B8 auto logout in core, REST idle-logout error — `feature/admin-kit`,
+      2026-10-26. Docs moved to a core page with a redirect, 2026-10-29
+      (docs repo branch `loggedin-3.4.0`). The add-on never sold and is
+      archived in Freemius, so the takeover code and the Add-ons page filter
+      were removed on 2026-10-30; no licence check or migration is needed
+- [x] B1 self-unlock and "Don't limit administrators", B3 Users list, B5
+      password-change sign-out — `feature/admin-kit`, 2026-10-26. One-time
+      "exempt administrators" notice (decision 6), 2026-10-29
+- [x] B2 limit message setting, displaced notice and redirect — 2026-10-29.
+      The notice matches the exact session Loggedin ended (its verifier),
+      not a time window, so other sign-outs never show it
+- [x] B4 "Your sessions" on the profile; a count on other users' profiles —
+      2026-10-29. WordPress's own "Log Out Everywhere Else" (and "Log Out
+      Everywhere" on another user's profile) stays the way to end the rest,
+      instead of a second button of ours. Single-session writes go through `SessionStore`
+      (also used by Logout Oldest and WP-CLI)
+- [x] B6 Logout Oldest and Logout All enforced as a session is created —
+      2026-10-29. Tested 2026-10-30 against WooCommerce 11.2 (My Account
+      login and Account details), Ultimate Member 2.14, Nextend Social
+      Login 3.1, Magic Login 2.8, Two Factor 0.17, Limit Login Attempts
+      Reloaded 3.3, WPS Hide Login 1.9 and application passwords; results
+      on the compatibility page. MemberPress (paid) is untested. Fixed from
+      that pass: Two Factor's password step ended sessions before the code
+      (room is now made at the end of the request, if the new session is
+      still there); Block New let Nextend's "Login restriction" through
+      (an empty password now means the plugin vouches for the user);
+      Ultimate Member and Limit Login Attempts Reloaded replaced the limit
+      message with "incorrect password". Left as is: LLAR counts each
+      refusal as a failed login. Second pass, 2026-10-31: User Switching
+      1.12 signed out the switched-to user's devices (sessions it marks
+      with `switched_from_id` are now left out), and a password copied in
+      during login by LDAP/SSO plugins triggered sign out on password
+      change (now ignored while a login is in progress). `check_password` is no longer hooked
+      (2026-10-30): it ran on password checks that aren't logins
+      (WooCommerce's current-password field, application passwords, 2FA)
+      and ended sessions with no new one to follow
+- [x] B7 readme, FAQ and docs pages — 2026-10-29. Readme rewritten for
+      WordPress.org search and the plugin renamed to "Session Manager: Limit
+      Concurrent Logins & Auto Logout", 2026-11-02. Store pages beyond the
+      WordPress.org readme are not updated yet
+- [x] Code review of core and the four add-ons — 2026-10-30. One
+      `SessionStore::end_all()` for every "sign out everywhere" path, one
+      settings schema (`Settings::properties()`, filterable), one asset
+      manifest reader, often-read options stored so they autoload, App.js
+      and the large Active Sessions files split. Add-ons got their own
+      filters (`loggedin_limit_per_role_limit`,
+      `loggedin_realtime_logout_enabled` / `_interval`) and the legacy panels
+      a JSX runtime shim for WordPress 6.0–6.5
 - [ ] Phase C — Login History, Membership Limits, Login Alerts, Active Sessions upgrade
 - [ ] Phase D — bundle plan, discovery

@@ -1,0 +1,52 @@
+/**
+ * Admin app entry: boots the React UI on Users → Loggedin.
+ *
+ * Boot order matters: `api-init` first, so any request made during the
+ * first render goes through its middleware, then the `@wordpress/data`
+ * store registrations, then the mount. The kit's stylesheet comes in
+ * with `./ui`.
+ *
+ * The mount node is printed by `Admin\Admin::render_page()`. The app
+ * mounts on DOM ready, after every add-on script has added its pages
+ * and panels through the `loggedin.admin.tabs` and
+ * `loggedin.settings.panels` filters.
+ */
+import './utils/api-init';
+import './store';
+import { Popover, SlotFillProvider } from '@wordpress/components';
+import domReady from '@wordpress/dom-ready';
+import { createRoot } from '@wordpress/element';
+import App from './app/App';
+import * as ui from './ui';
+
+/*
+ * Add-ons with a screen of their own (Active Sessions) draw it with the
+ * same kit: `window.loggedin.ui.Card`, `.TableCard`, `.Notice` and the
+ * rest. Read it while rendering, not when the add-on's script loads.
+ */
+if ( window.loggedin ) {
+	window.loggedin.ui = ui;
+}
+
+domReady( () => {
+	const root = document.getElementById( 'loggedin-admin' );
+	const boot = window.loggedin;
+
+	if ( ! root || ! boot ) {
+		return;
+	}
+
+	root.innerHTML = '';
+
+	/*
+	 * Popovers, dropdowns and menus (add-on pages use them) render into
+	 * the Popover slot, so they sit above the screen with the right
+	 * position and background.
+	 */
+	createRoot( root ).render(
+		<SlotFillProvider>
+			<App boot={ boot } />
+			<Popover.Slot />
+		</SlotFillProvider>
+	);
+} );

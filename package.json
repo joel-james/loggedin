@@ -1,7 +1,7 @@
 {
   "name": "loggedin",
-  "version": "3.3.1",
-  "description": "Limit an account to a specific number of simultaneous logins across all devices.",
+  "version": "3.4.0",
+  "description": "Session and login manager. Limit concurrent logins, stop account sharing, auto logout idle users and force logout any device.",
   "main": "loggedin.php",
   "private": true,
   "homepage": "https://github.com/joel-james/loggedin/",
@@ -17,8 +17,8 @@
   ],
   "license": "GPL-2.0-or-later",
   "scripts": {
-    "build": "wp-scripts build assets/src/admin.js --output-path=build",
-    "start": "wp-scripts start assets/src/admin.js --output-path=build",
+    "build": "wp-scripts build admin=./assets/src/admin/index.js react-jsx-runtime=./assets/src/admin/react-jsx-runtime.js idle=./assets/src/front/idle.js --output-path=build",
+    "start": "wp-scripts start admin=./assets/src/admin/index.js react-jsx-runtime=./assets/src/admin/react-jsx-runtime.js idle=./assets/src/front/idle.js --output-path=build",
     "format": "wp-scripts format assets/src",
     "lint:js": "wp-scripts lint-js assets/src",
     "pack": "bin/pack.sh"
