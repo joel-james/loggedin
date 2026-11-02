@@ -508,5 +508,13 @@ Settled 2026-09-26 unless dated otherwise.
       filters (`loggedin_limit_per_role_limit`,
       `loggedin_realtime_logout_enabled` / `_interval`) and the legacy panels
       a JSX runtime shim for WordPress 6.0–6.5
+- [x] Released 2026-11-02: Loggedin 3.4.0 on WordPress.org (SVN r3779488,
+      eight new screenshots), then Active Sessions 1.2.0 and Limit Per Role,
+      Limit Per User and Real-time Logout 2.2.0 on Freemius. Docs went live
+      the same day. Limit Per Role 2.2.0 needs WordPress 6.1: WordPress 6.0's
+      settings endpoint can't save the role map. Core CI now tests
+      WordPress 6.5, the new minimum, instead of 6.0. The add-ons' pack
+      scripts check `composer.json` and `Plugin::VERSION` too, after
+      `composer.json` shipped a release behind in all four
 - [ ] Phase C — Login History, Membership Limits, Login Alerts, Active Sessions upgrade
 - [ ] Phase D — bundle plan, discovery
