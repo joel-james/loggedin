@@ -63,13 +63,7 @@ jobs:
       matrix:
         php: [ '7.4', '8.3' ]
         # The declared "Requires at least" floor and the latest release.
-        wp:  [ '6.0', 'latest' ]
-        exclude:
-          # WP 6.0 predates PHP 8.2/8.3 — WP_Object_Cache trips the
-          # "Creation of dynamic property" deprecation in core itself.
-          # Official WP 6.0 support tops out at PHP 8.1.
-          - php: '8.3'
-            wp:  '6.0'
+        wp:  [ '6.5', 'latest' ]
 
     services:
       mysql:
