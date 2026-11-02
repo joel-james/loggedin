@@ -208,8 +208,14 @@ Yes. `wp loggedin sessions` lists, counts and ends a user's sessions, and `wp lo
 
 == Screenshots ==
 
-1. **Login limits** — concurrent-login limit and login logic.
-2. **Sessions** — Force Logout and Logout All Users.
+1. Login limits: how many devices an account can be signed in on at once, and what happens when a new login goes over the limit.
+2. Lockout and recovery: leave administrators out of the limit, write the blocked-login message, let blocked users sign out their other devices by email, and choose where signed-out devices go.
+3. Auto logout: sign out idle sessions after a countdown, set timeouts per role, sign out other devices on a password change, and set how long a login lasts.
+4. Sessions: sign one user out of every device, or sign out every user on the site at once.
+5. The Users screen with Sessions and Last login columns, and a Sign out everywhere link for each user.
+6. Your sessions on the profile screen: each user sees the devices they're signed in on and can sign any of them out.
+7. A login refused by Block New, with the link that emails the user a way to sign out their other devices.
+8. The countdown shown before an idle session is signed out.
 
 == Changelog ==
 
