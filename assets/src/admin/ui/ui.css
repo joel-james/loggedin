@@ -339,22 +339,6 @@ html {
 	padding: var(--loggedin-space-7) var(--loggedin-space-7) var(--loggedin-space-8);
 }
 
-/* Notices from WordPress and other plugins, moved here from above the screen. */
-.loggedin-wp-notices {
-	display: flex;
-	flex-direction: column;
-	gap: var(--loggedin-space-4);
-}
-
-.loggedin-wp-notices:empty {
-	display: none;
-}
-
-.loggedin-admin .loggedin-wp-notices > * {
-	display: block;
-	margin: 0;
-}
-
 .loggedin-content--wide {
 	max-width: none;
 }
@@ -403,6 +387,22 @@ html {
 
 #wpbody-content {
 	padding-bottom: 0;
+}
+
+/*
+ * Notices from WordPress and other plugins stay where WordPress prints them,
+ * above the sidebar and header, including ones a script adds later. Without
+ * a `.wrap`, each would keep its own margins; this lines them up as one
+ * stack. They sit outside the screen's root, so the tokens don't reach them:
+ * 20px is `#wpcontent`'s padding, matched on the right.
+ */
+#wpbody-content > :is(.notice, .updated, .error, .update-nag) {
+	display: block;
+	margin: 16px 20px 0 0;
+}
+
+#wpbody-content > :is(.notice, .updated, .error, .update-nag) ~ .loggedin-admin {
+	margin-top: 16px;
 }
 
 /* Card */
@@ -1323,6 +1323,15 @@ html {
 
 /* Narrow screens: brand row, then a sticky header with the section dropdown and Save. */
 @media (max-width: 782px) {
+
+	/* `#wpcontent`'s padding is 10px here. */
+	#wpbody-content > :is(.notice, .updated, .error, .update-nag) {
+		margin: 12px 10px 0 0;
+	}
+
+	#wpbody-content > :is(.notice, .updated, .error, .update-nag) ~ .loggedin-admin {
+		margin-top: 12px;
+	}
 
 	.loggedin-admin {
 		--loggedin-control-height: 44px;

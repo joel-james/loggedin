@@ -13,7 +13,7 @@
  */
 import { store as coreStore } from '@wordpress/core-data';
 import { useSelect } from '@wordpress/data';
-import { useEffect, useMemo, useRef } from '@wordpress/element';
+import { useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -40,7 +40,6 @@ export default function App( { boot } ) {
 		[ boot ]
 	);
 	const { page, navigate } = useRoute( pages );
-	const wpNotices = useRef();
 
 	const site = useSelect(
 		( select ) =>
@@ -63,26 +62,6 @@ export default function App( { boot } ) {
 		errorCount: Object.keys( errors ).length,
 		saves: page.saves,
 	} );
-
-	/*
-	 * WordPress prints admin notices (updates, the review prompt, other
-	 * plugins) before the app, where they would sit outside the layout.
-	 * Move them into the content column, as core's common.js does for
-	 * `.wp-header-end` on classic screens. React renders no children in
-	 * that box, so it never touches them.
-	 */
-	useEffect( () => {
-		const box = wpNotices.current;
-		const body = document.getElementById( 'wpbody-content' );
-
-		if ( ! box || ! body ) {
-			return;
-		}
-
-		body.querySelectorAll(
-			':scope > .notice, :scope > .updated, :scope > .error, :scope > .update-nag'
-		).forEach( ( item ) => box.appendChild( item ) );
-	}, [] );
 
 	const navGroups = groupsWithPages( pages, errors );
 
@@ -125,7 +104,6 @@ export default function App( { boot } ) {
 						page.wide ? ' loggedin-content--wide' : ''
 					}` }
 				>
-					<div className="loggedin-wp-notices" ref={ wpNotices } />
 					{ notice }
 					{ hasLoaded ? (
 						<ErrorBoundary key={ page.id }>
