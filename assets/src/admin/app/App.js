@@ -23,6 +23,7 @@ import { PageHeader, SectionSelect, Sidebar, Snackbars, Spinner } from '../ui';
 import ErrorBoundary from './error-boundary';
 import AppFooter from './footer';
 import { groupsWithPages, resolvePages } from './pages';
+import ScreenNotices from './screen-notices';
 import useRoute, { tabUrl } from './use-route';
 import useSaveBar from './use-save-bar';
 import { validate } from './validate';
@@ -104,6 +105,7 @@ export default function App( { boot } ) {
 						page.wide ? ' loggedin-content--wide' : ''
 					}` }
 				>
+					<ScreenNotices notices={ boot.notices } />
 					{ notice }
 					{ hasLoaded ? (
 						<ErrorBoundary key={ page.id }>

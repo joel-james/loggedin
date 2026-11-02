@@ -220,13 +220,14 @@ final class Assets {
 			'activeAddons'   => $this->active_addon_slugs(),
 			'roles'          => array_map( 'translate_user_role', wp_roles()->get_names() ),
 			'schema'         => $this->settings_schema(),
+			'notices'        => array(),
 		);
 
 		/**
 		 * Filter the localised script vars for the admin app.
 		 *
 		 * @since 3.0.0
-		 * @since 3.4.0 Adds `wpVersion`, `phpVersion`, `urls`, `defaultMessage`, `homeUrl`, `activeAddons`, `roles`, `autoLogout` (added by the auto logout module) and `schema`.
+		 * @since 3.4.0 Adds `wpVersion`, `phpVersion`, `urls`, `defaultMessage`, `homeUrl`, `activeAddons`, `roles`, `autoLogout` (added by the auto logout module), `schema` and `notices`. Each notice is an array with `id`, `tone` (`info`, `success`, `warning` or `error`), `title`, and optionally `text`, `items` (a list of strings) and `actions` (each with `label`, `href` and an optional `primary` flag); the app draws them above the page.
 		 *
 		 * @param array $vars Vars passed into the React tree.
 		 */

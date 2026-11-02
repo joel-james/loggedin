@@ -790,6 +790,16 @@ html {
 	margin: 2px 0 0;
 }
 
+.loggedin-admin .loggedin-notice__list {
+	margin: 4px 0 0;
+	padding-inline-start: 18px;
+	list-style: disc;
+}
+
+.loggedin-admin .loggedin-notice__list li {
+	margin: 0;
+}
+
 .loggedin-notice__actions {
 	display: flex;
 	flex-wrap: wrap;

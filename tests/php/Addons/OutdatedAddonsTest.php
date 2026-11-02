@@ -85,4 +85,24 @@ class OutdatedAddonsTest extends WP_UnitTestCase {
 
 		$this->assertSame( array(), Plugin::instance()->outdated_addons()->outdated() );
 	}
+
+	public function test_the_screen_shows_outdated_add_ons_as_a_notice(): void {
+		$this->addon( 'loggedin-realtime-logout', '2.1.0' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$vars = Plugin::instance()->outdated_addons()->script_vars( array( 'notices' => array() ) );
+
+		$this->assertCount( 1, $vars['notices'] );
+		$this->assertSame( 'warning', $vars['notices'][0]['tone'] );
+		$this->assertStringContainsString( '2.1.0', $vars['notices'][0]['items'][0] );
+	}
+
+	public function test_the_screen_gets_no_notice_when_add_ons_are_current(): void {
+		$this->addon( 'loggedin-realtime-logout', '2.2.0' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$vars = Plugin::instance()->outdated_addons()->script_vars( array( 'notices' => array() ) );
+
+		$this->assertSame( array(), $vars['notices'] );
+	}
 }

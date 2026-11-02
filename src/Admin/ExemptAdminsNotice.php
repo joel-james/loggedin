@@ -6,7 +6,8 @@
  * from before 3.4.0 keeps limiting them, so nothing changes under it
  * (see {@see \FoxeLabs\Loggedin\Settings\Upgrader::keep_pre_340_behaviour()}).
  * This notice tells such a site's admins the setting exists, once: it
- * goes away for good when someone turns the setting on or says no.
+ * goes away for good when someone turns the setting on or says no. It
+ * shows inside Loggedin's screen, drawn by the app from the script vars.
  *
  * @since 3.4.0
  * @package FoxeLabs\Loggedin\Admin
@@ -85,7 +86,7 @@ final class ExemptAdminsNotice {
 		}
 
 		add_action( 'admin_init', array( $this, 'answer' ) );
-		add_action( 'admin_notices', array( $this, 'notice' ) );
+		add_filter( 'loggedin_admin_script_vars', array( $this, 'script_vars' ) );
 	}
 
 	/**
@@ -136,33 +137,38 @@ final class ExemptAdminsNotice {
 	}
 
 	/**
-	 * Show the suggestion on Loggedin's screen.
+	 * Add the suggestion to the notices Loggedin's screen shows.
 	 *
 	 * @since 3.4.0
 	 *
-	 * @return void
+	 * @param array<string, mixed> $vars Script vars for the admin app.
+	 *
+	 * @return array<string, mixed>
 	 */
-	public function notice(): void {
-		$screen = get_current_screen();
-
-		if (
-			! $screen
-			|| Admin::SCREEN !== $screen->id
-			|| ! current_user_can( 'manage_options' )
-			|| ! $this->is_due()
-		) {
-			return;
+	public function script_vars( array $vars ): array {
+		if ( ! current_user_can( 'manage_options' ) || ! $this->is_due() ) {
+			return $vars;
 		}
 
-		printf(
-			'<div class="notice notice-info"><p><strong>%1$s</strong> %2$s</p><p><a class="button button-primary" href="%3$s">%4$s</a> <a class="button" href="%5$s">%6$s</a></p></div>',
-			esc_html__( 'Stop limiting administrators?', 'loggedin' ),
-			esc_html__( 'Loggedin can leave users who manage the site out of the login limit, so an administrator is never locked out of their own site. It is on for new sites and stayed off here when you updated.', 'loggedin' ),
-			esc_url( $this->answer_url( 'on' ) ),
-			esc_html__( 'Don’t limit administrators', 'loggedin' ),
-			esc_url( $this->answer_url( 'no' ) ),
-			esc_html__( 'Keep limiting them', 'loggedin' )
+		$vars['notices'][] = array(
+			'id'      => 'exempt-admins',
+			'tone'    => 'info',
+			'title'   => __( 'Stop limiting administrators?', 'loggedin' ),
+			'text'    => __( 'Loggedin can leave users who manage the site out of the login limit, so an administrator is never locked out of their own site. It is on for new sites and stayed off here when you updated.', 'loggedin' ),
+			'actions' => array(
+				array(
+					'label'   => __( 'Don’t limit administrators', 'loggedin' ),
+					'href'    => esc_url_raw( $this->answer_url( 'on' ) ),
+					'primary' => true,
+				),
+				array(
+					'label' => __( 'Keep limiting them', 'loggedin' ),
+					'href'  => esc_url_raw( $this->answer_url( 'no' ) ),
+				),
+			),
 		);
+
+		return $vars;
 	}
 
 	/**

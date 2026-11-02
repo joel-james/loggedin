@@ -203,6 +203,28 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertEmpty( get_option( ExemptAdminsNotice::OPTION ) );
 	}
 
+	public function test_the_suggestion_is_a_notice_inside_the_screen(): void {
+		update_option( ExemptAdminsNotice::OPTION, 1 );
+		Plugin::instance()->settings()->update( array( 'exempt_admins' => false ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$vars = Plugin::instance()->exempt_admins_notice()->script_vars( array( 'notices' => array() ) );
+
+		$this->assertCount( 1, $vars['notices'] );
+		$this->assertSame( 'exempt-admins', $vars['notices'][0]['id'] );
+		$this->assertStringContainsString( 'loggedin_exempt_admins=on', $vars['notices'][0]['actions'][0]['href'] );
+	}
+
+	public function test_only_site_managers_see_the_suggestion(): void {
+		update_option( ExemptAdminsNotice::OPTION, 1 );
+		Plugin::instance()->settings()->update( array( 'exempt_admins' => false ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+
+		$vars = Plugin::instance()->exempt_admins_notice()->script_vars( array( 'notices' => array() ) );
+
+		$this->assertSame( array(), $vars['notices'] );
+	}
+
 	public function test_a_new_install_gets_no_suggestion(): void {
 		delete_option( Plugin::VERSION_KEY );
 		delete_option( Plugin::OPTION_KEY );
