@@ -1,6 +1,6 @@
-# Loggedin — Session Manager, Limit Concurrent Logins & Force Logout
+# Loggedin — Session Manager: Limit Concurrent Logins & Auto Logout
 
-A session manager for WordPress — limit concurrent logins, stop account sharing, and force logout any user's active sessions.
+A session and login manager for WordPress. Limit concurrent logins, stop account sharing, auto logout idle users and force logout any device.
 
 [![Plugin Version](https://img.shields.io/wordpress/plugin/v/loggedin.svg?style=flat-square)](https://wordpress.org/plugins/loggedin/)
 [![License](https://img.shields.io/badge/license-GPL_v2%2B-blue.svg?style=flat-square)](https://opensource.org/license/GPL-2.0)

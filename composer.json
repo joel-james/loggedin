@@ -1,7 +1,7 @@
 {
   "name": "loggedin/loggedin",
-  "description": "Limit an account to a specific number of simultaneous logins across all devices.",
-  "version": "3.2.0",
+  "description": "Session and login manager. Limit concurrent logins, stop account sharing, auto logout idle users and force logout any device.",
+  "version": "3.4.0",
   "homepage": "https://wordpress.org/plugins/loggedin/",
   "license": "GPL-2.0+",
   "type": "wordpress-plugin",

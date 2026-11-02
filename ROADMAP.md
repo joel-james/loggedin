@@ -496,7 +496,9 @@ Settled 2026-09-26 unless dated otherwise.
       (2026-10-30): it ran on password checks that aren't logins
       (WooCommerce's current-password field, application passwords, 2FA)
       and ended sessions with no new one to follow
-- [x] B7 readme, FAQ and docs pages — 2026-10-29. Store pages beyond the
+- [x] B7 readme, FAQ and docs pages — 2026-10-29. Readme rewritten for
+      WordPress.org search and the plugin renamed to "Session Manager: Limit
+      Concurrent Logins & Auto Logout", 2026-11-02. Store pages beyond the
       WordPress.org readme are not updated yet
 - [x] Code review of core and the four add-ons — 2026-10-30. One
       `SessionStore::end_all()` for every "sign out everywhere" path, one

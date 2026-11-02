@@ -18,9 +18,9 @@
  * @license           GPL-2.0+
  *
  * @wordpress-plugin
- * Plugin Name:       Loggedin - Session Manager, Limit Concurrent Logins & Force Logout
+ * Plugin Name:       Loggedin - Session Manager: Limit Concurrent Logins & Auto Logout
  * Plugin URI:        https://foxelabs.com/software/plugins/loggedin
- * Description:       Limit an account to a specific number of simultaneous logins across all devices.
+ * Description:       Session and login manager. Limit concurrent logins, stop account sharing, auto logout idle users and force logout any device.
  * Version:           3.4.0
  * Author:            Joel James
  * Author URI:        https://foxelabs.com/

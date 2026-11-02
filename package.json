@@ -1,7 +1,7 @@
 {
   "name": "loggedin",
   "version": "3.4.0",
-  "description": "Limit an account to a specific number of simultaneous logins across all devices.",
+  "description": "Session and login manager. Limit concurrent logins, stop account sharing, auto logout idle users and force logout any device.",
   "main": "loggedin.php",
   "private": true,
   "homepage": "https://github.com/joel-james/loggedin/",
