@@ -1,6 +1,6 @@
 {
   "name": "loggedin",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "description": "Session and login manager. Limit concurrent logins, stop account sharing, auto logout idle users and force logout any device.",
   "main": "loggedin.php",
   "private": true,

@@ -418,6 +418,21 @@ class IdleGuardTest extends WP_UnitTestCase {
 		unset( $_GET['loggedin_auto_logout'] );
 	}
 
+	public function test_login_message_survives_a_null_from_an_earlier_filter(): void {
+		// Another plugin on `login_message` returning null used to be a
+		// fatal TypeError on wp-login.php (issue #34).
+		add_filter( 'login_message', '__return_null', 5 );
+
+		unset( $_GET['loggedin_auto_logout'] );
+		$this->assertSame( '', apply_filters( 'login_message', '' ) );
+
+		$_GET['loggedin_auto_logout'] = '1';
+		$this->assertStringContainsString( 'inactive', apply_filters( 'login_message', '' ) );
+
+		unset( $_GET['loggedin_auto_logout'] );
+		remove_filter( 'login_message', '__return_null', 5 );
+	}
+
 	public function test_rest_error_carries_the_login_url(): void {
 		$error = Plugin::instance()->auto_logout()->idle_guard()->rest_error( null );
 

@@ -119,12 +119,14 @@ final class Assets {
 	 * any bundle is enqueued, and only on this screen.
 	 *
 	 * @since 3.4.0
+	 * @since 3.4.1 Accepts a non-string hook suffix.
 	 *
-	 * @param string $hook Current admin screen hook.
+	 * @param string|null $hook Current admin screen hook. Null when a plugin
+	 *                          prints the admin header outside wp-admin.
 	 *
 	 * @return void
 	 */
-	public function register_jsx_runtime( string $hook ): void {
+	public function register_jsx_runtime( $hook ): void {
 		if ( Admin::SCREEN !== $hook || wp_script_is( 'react-jsx-runtime', 'registered' ) ) {
 			return;
 		}
@@ -144,12 +146,14 @@ final class Assets {
 	 * Enqueue the React bundle on the plugin admin page.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.1 Accepts a non-string hook suffix.
 	 *
-	 * @param string $hook Current admin screen hook.
+	 * @param string|null $hook Current admin screen hook. Null when a plugin
+	 *                          prints the admin header outside wp-admin.
 	 *
 	 * @return void
 	 */
-	public function enqueue( string $hook ): void {
+	public function enqueue( $hook ): void {
 		if ( Admin::SCREEN !== $hook ) {
 			return;
 		}

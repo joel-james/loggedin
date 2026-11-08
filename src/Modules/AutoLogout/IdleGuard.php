@@ -306,13 +306,20 @@ final class IdleGuard {
 	/**
 	 * Explain the sign-out on the login screen.
 	 *
-	 * @since 3.4.0
+	 * The parameter is untyped on purpose: an earlier callback on
+	 * `login_message` can return null, and a `string` type would turn
+	 * that into a fatal error on the login screen.
 	 *
-	 * @param string $message Existing login-screen message markup.
+	 * @since 3.4.0
+	 * @since 3.4.1 Accepts a non-string message and treats it as a string.
+	 *
+	 * @param string|null $message Existing login-screen message markup.
 	 *
 	 * @return string
 	 */
-	public function login_message( string $message ): string {
+	public function login_message( $message ): string {
+		$message = (string) $message;
+
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only flag that only picks which notice to render.
 		if ( empty( $_GET[ self::NOTICE_ARG ] ) ) {
 			return $message;

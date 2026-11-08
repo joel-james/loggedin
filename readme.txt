@@ -4,7 +4,7 @@ Tags: session management, concurrent login, auto logout, force logout, account s
 Donate link: https://paypal.me/JoelCJ
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 3.4.0
+Stable tag: 3.4.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -219,6 +219,12 @@ Yes. `wp loggedin sessions` lists, counts and ends a user's sessions, and `wp lo
 
 == Changelog ==
 
+= 3.4.1 =
+* Fix: The login screen no longer shows a critical error when another plugin's login message filter returns nothing.
+* Fix: A device signed out by a newer login no longer gets a critical error on its next page on WordPress 6.5, or on sites that set `COOKIE_DOMAIN` to false.
+* Fix: Admin screens that another plugin prints outside wp-admin no longer show a critical error.
+* Fix: Loggedin no longer causes a critical error when another plugin or an add-on returns nothing from one of its filters, or passes something other than a user to the login check.
+
 = 3.4.0 =
 * New: Settings screen rebuilt with a sidebar of pages — Login limits, Lockout & recovery, Auto logout, Sessions, Add-ons and Help — and Save in the page header.
 * New: Self-unlock — a user blocked by Block New can email themselves a link that signs out their other devices. Only offered after the right password; links are single-use and expire after 15 minutes.
@@ -310,6 +316,9 @@ Yes. `wp loggedin sessions` lists, counts and ends a user's sessions, and `wp lo
 For the full release history, see the [changelog](https://docs.foxelabs.com/software/loggedin/changelog).
 
 == Upgrade Notice ==
+
+= 3.4.1 =
+Fixes critical errors on the login screen and other pages when another plugin passes Loggedin something unexpected. Recommended for everyone on 3.4.0.
 
 = 3.4.0 =
 New settings screen, free built-in auto logout, self-unlock by email and sessions on the Users screen. Requires WordPress 6.5. Update your Loggedin add-ons too.

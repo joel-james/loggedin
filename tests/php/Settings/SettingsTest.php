@@ -288,6 +288,45 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'queue', Plugin::instance()->settings()->logics() );
 	}
 
+	public function test_a_mode_callback_that_reads_the_settings_does_not_recurse(): void {
+		$this->add_queue_mode();
+		Plugin::instance()->settings()->update( array( 'logic' => 'queue' ) );
+
+		// Reading the option runs `normalize_logic()`, which resolves the
+		// modes, which runs this callback again.
+		add_filter(
+			'loggedin_logics',
+			static function ( $logics ) {
+				get_option( Plugin::OPTION_KEY );
+				$logics['broken'] = 'not an array';
+				return $logics;
+			},
+			20
+		);
+		Plugin::instance()->settings()->flush();
+
+		$this->assertSame( 'queue', get_option( Plugin::OPTION_KEY )['logic'] );
+		$this->assertArrayNotHasKey( 'broken', Plugin::instance()->settings()->logics() );
+	}
+
+	public function test_a_defaults_callback_that_returns_nothing_is_not_an_error(): void {
+		add_filter( 'loggedin_settings_defaults', '__return_null', 99 );
+		Plugin::instance()->settings()->flush();
+
+		$this->assertSame( array(), Plugin::instance()->settings()->defaults() );
+		$this->assertIsArray( Plugin::instance()->settings()->all() );
+	}
+
+	public function test_the_suggestion_survives_a_non_array_from_an_earlier_callback(): void {
+		update_option( ExemptAdminsNotice::OPTION, 1 );
+		Plugin::instance()->settings()->update( array( 'exempt_admins' => false ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$vars = Plugin::instance()->exempt_admins_notice()->script_vars( null );
+
+		$this->assertSame( 'exempt-admins', $vars['notices'][0]['id'] );
+	}
+
 	public function test_a_mode_an_addon_adds_saves_over_rest(): void {
 		$this->add_queue_mode();
 		Plugin::instance()->settings()->register_option();

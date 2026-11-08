@@ -244,7 +244,13 @@ final class Addons {
 		);
 
 		foreach ( $this->get_registered_addons() as $id => $args ) {
-			$this->freemius[ $id ] = Freemius::get_instance( $id, $args );
+			// A malformed entry from a third party must not take the
+			// whole admin down with a TypeError.
+			if ( ! is_numeric( $id ) || ! is_array( $args ) ) {
+				continue;
+			}
+
+			$this->freemius[ (int) $id ] = Freemius::get_instance( (int) $id, $args );
 		}
 	}
 
@@ -256,8 +262,9 @@ final class Addons {
 	 *
 	 * @since 3.0.0
 	 * @since 3.4.0 Public, replacing `get_registered_addons_public()`.
+	 * @since 3.4.1 Survives a filter callback that returns a non-array.
 	 *
-	 * @return array<int, array<string, mixed>> Addons keyed by Freemius id.
+	 * @return array<int|string, mixed> Addons keyed by Freemius id.
 	 */
 	public function get_registered_addons(): array {
 		/**
@@ -270,6 +277,6 @@ final class Addons {
 		 *
 		 * @param array $addons Addons keyed by Freemius id.
 		 */
-		return apply_filters( 'loggedin_register_addon', array() );
+		return (array) apply_filters( 'loggedin_register_addon', array() );
 	}
 }
