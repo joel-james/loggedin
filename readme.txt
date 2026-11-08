@@ -219,6 +219,12 @@ Yes. `wp loggedin sessions` lists, counts and ends a user's sessions, and `wp lo
 
 == Changelog ==
 
+= 3.4.1 =
+* Fix: The login screen no longer shows a critical error when another plugin's login message filter returns nothing.
+* Fix: A device signed out by a newer login no longer gets a critical error on its next page on WordPress 6.5, or on sites that set `COOKIE_DOMAIN` to false.
+* Fix: Admin screens that another plugin prints outside wp-admin no longer show a critical error.
+* Fix: Loggedin no longer causes a critical error when another plugin or an add-on returns nothing from one of its filters, or passes something other than a user to the login check.
+
 = 3.4.0 =
 * New: Settings screen rebuilt with a sidebar of pages — Login limits, Lockout & recovery, Auto logout, Sessions, Add-ons and Help — and Save in the page header.
 * New: Self-unlock — a user blocked by Block New can email themselves a link that signs out their other devices. Only offered after the right password; links are single-use and expire after 15 minutes.

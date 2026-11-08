@@ -86,6 +86,19 @@ final class Settings {
 	private $logics = null;
 
 	/**
+	 * Whether the `loggedin_logics` filter is running.
+	 *
+	 * A callback on that filter that reads the settings would otherwise
+	 * re-enter {@see self::logics()} through {@see self::normalize_logic()}
+	 * until the stack ran out.
+	 *
+	 * @since 3.4.1
+	 *
+	 * @var bool
+	 */
+	private $resolving_logics = false;
+
+	/**
 	 * Register hooks.
 	 *
 	 * @since 3.0.0
@@ -180,10 +193,20 @@ final class Settings {
 		 *
 		 * @param array $logics Logics keyed by mode id.
 		 */
-		$logics = (array) apply_filters( 'loggedin_logics', $logics );
+		$this->resolving_logics = true;
+
+		try {
+			$logics = (array) apply_filters( 'loggedin_logics', $logics );
+		} finally {
+			$this->resolving_logics = false;
+		}
 
 		$this->logics = array();
 		foreach ( $logics as $key => $meta ) {
+			if ( ! is_array( $meta ) ) {
+				continue;
+			}
+
 			$this->logics[ (string) $key ] = array(
 				'label' => (string) ( $meta['label'] ?? $key ),
 				'desc'  => (string) ( $meta['desc'] ?? '' ),
@@ -213,13 +236,14 @@ final class Settings {
 	 * Read a stored mode that is no longer registered as the default.
 	 *
 	 * @since 3.4.0
+	 * @since 3.4.1 Leaves the value alone while the modes are being resolved.
 	 *
 	 * @param mixed $value Stored option value.
 	 *
 	 * @return mixed
 	 */
 	public function normalize_logic( $value ) {
-		if ( ! did_action( 'init' ) || ! is_array( $value ) || ! isset( $value['logic'] ) ) {
+		if ( $this->resolving_logics || ! did_action( 'init' ) || ! is_array( $value ) || ! isset( $value['logic'] ) ) {
 			return $value;
 		}
 
@@ -245,6 +269,7 @@ final class Settings {
 	 * ({@see self::properties()}) to be stored.
 	 *
 	 * @since 3.0.0
+	 * @since 3.4.1 Survives a filter callback that returns a non-array.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -256,7 +281,7 @@ final class Settings {
 		 *
 		 * @param array $defaults Defaults keyed by setting id.
 		 */
-		return apply_filters(
+		return (array) apply_filters(
 			'loggedin_settings_defaults',
 			array(
 				'maximum'            => 1,

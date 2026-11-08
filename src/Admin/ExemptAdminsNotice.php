@@ -140,12 +140,16 @@ final class ExemptAdminsNotice {
 	 * Add the suggestion to the notices Loggedin's screen shows.
 	 *
 	 * @since 3.4.0
+	 * @since 3.4.1 Survives an earlier callback that returns a non-array.
 	 *
 	 * @param array<string, mixed> $vars Script vars for the admin app.
 	 *
 	 * @return array<string, mixed>
 	 */
-	public function script_vars( array $vars ): array {
+	public function script_vars( $vars ): array {
+		$vars            = (array) $vars;
+		$vars['notices'] = (array) ( $vars['notices'] ?? array() );
+
 		if ( ! current_user_can( 'manage_options' ) || ! $this->is_due() ) {
 			return $vars;
 		}

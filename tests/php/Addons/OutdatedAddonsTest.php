@@ -105,4 +105,15 @@ class OutdatedAddonsTest extends WP_UnitTestCase {
 
 		$this->assertSame( array(), $vars['notices'] );
 	}
+
+	public function test_a_non_array_from_an_earlier_callback_is_not_an_error(): void {
+		$this->addon( 'loggedin-realtime-logout', '2.1.0' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$vars = Plugin::instance()->outdated_addons()->script_vars( null );
+		$this->assertCount( 1, $vars['notices'] );
+
+		$vars = Plugin::instance()->outdated_addons()->script_vars( array( 'notices' => 'oops' ) );
+		$this->assertSame( 'warning', end( $vars['notices'] )['tone'] );
+	}
 }

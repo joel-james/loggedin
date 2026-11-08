@@ -42,4 +42,16 @@ class AssetsTest extends WP_UnitTestCase {
 
 		$this->assertFalse( wp_script_is( 'react-jsx-runtime', 'registered' ) );
 	}
+
+	public function test_a_missing_hook_suffix_is_not_an_error(): void {
+		// `iframe_header()` and admin-header.php pass the `$hook_suffix`
+		// global, which is null outside wp-admin/admin.php.
+		wp_deregister_script( 'react-jsx-runtime' );
+
+		Plugin::instance()->assets()->register_jsx_runtime( null );
+		Plugin::instance()->assets()->enqueue( null );
+
+		$this->assertFalse( wp_script_is( 'react-jsx-runtime', 'registered' ) );
+		$this->assertFalse( wp_script_is( 'loggedin-admin', 'enqueued' ) );
+	}
 }

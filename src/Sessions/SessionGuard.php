@@ -298,6 +298,7 @@ final class SessionGuard {
 	 *
 	 * @since 3.0.0
 	 * @since 3.4.0 Checks the password first and offers the unlock link.
+	 * @since 3.4.1 Passes through anything that isn't a WP_User.
 	 *
 	 * @param mixed  $user     WP_User on success, WP_Error on prior failure.
 	 * @param string $password Password the visitor typed.
@@ -308,6 +309,12 @@ final class SessionGuard {
 		// Pre-existing error from earlier in the auth pipeline —
 		// propagate it untouched, don't replace it with ours.
 		if ( is_wp_error( $user ) ) {
+			return $user;
+		}
+
+		// An earlier callback, or a plugin firing this filter itself, can
+		// pass something other than a user. There is nobody to limit.
+		if ( ! $user instanceof WP_User ) {
 			return $user;
 		}
 

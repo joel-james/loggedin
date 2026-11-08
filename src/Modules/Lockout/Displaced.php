@@ -332,6 +332,7 @@ final class Displaced {
 	 * and front-end pages when WordPress lives in a subdirectory.
 	 *
 	 * @since 3.4.0
+	 * @since 3.4.1 Accepts a false COOKIE_DOMAIN.
 	 *
 	 * @param int $expires Unix time; in the past to clear it.
 	 *
@@ -341,8 +342,13 @@ final class Displaced {
 		$value = $expires > time() ? $expires . '.' . $this->sign( $expires ) : '';
 
 		if ( ! headers_sent() ) {
+			// COOKIE_DOMAIN is false before WordPress 6.6, and on sites that
+			// define it so. Under strict types setcookie() refuses a false
+			// domain, so it must be cast.
+			$domain = (string) COOKIE_DOMAIN;
+
 			foreach ( array_unique( array( COOKIEPATH, SITECOOKIEPATH ) ) as $path ) {
-				setcookie( self::COOKIE, $value, $expires, $path, COOKIE_DOMAIN, is_ssl(), true );
+				setcookie( self::COOKIE, $value, $expires, $path, $domain, is_ssl(), true );
 			}
 		}
 
