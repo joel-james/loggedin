@@ -4,7 +4,7 @@ Tags: session management, concurrent login, auto logout, force logout, account s
 Donate link: https://paypal.me/JoelCJ
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 3.4.0
+Stable tag: 3.4.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -316,6 +316,9 @@ Yes. `wp loggedin sessions` lists, counts and ends a user's sessions, and `wp lo
 For the full release history, see the [changelog](https://docs.foxelabs.com/software/loggedin/changelog).
 
 == Upgrade Notice ==
+
+= 3.4.1 =
+Fixes critical errors on the login screen and other pages when another plugin passes Loggedin something unexpected. Recommended for everyone on 3.4.0.
 
 = 3.4.0 =
 New settings screen, free built-in auto logout, self-unlock by email and sessions on the Users screen. Requires WordPress 6.5. Update your Loggedin add-ons too.
