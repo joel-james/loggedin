@@ -178,6 +178,19 @@ class SessionGuardTest extends WP_UnitTestCase {
 		$this->assertSame( $error, $result );
 	}
 
+	public function test_block_mode_passes_through_anything_that_is_not_a_user(): void {
+		$this->set_settings( 1, 'block' );
+
+		$guard = Plugin::instance()->session_guard();
+
+		// An earlier `wp_authenticate_user` callback can return false, and
+		// a plugin can fire the filter with a user-shaped object.
+		$this->assertFalse( $guard->validate_block_logic( false, 'correct-horse' ) );
+
+		$fake = (object) array( 'ID' => $this->user_id );
+		$this->assertSame( $fake, $guard->validate_block_logic( $fake ) );
+	}
+
 	/**
 	 * A session made the way social and magic-link logins make one,
 	 * through to the end of the request.
