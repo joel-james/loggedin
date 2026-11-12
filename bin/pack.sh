@@ -3,7 +3,8 @@
 # Build a WordPress.org-ready ZIP of the Loggedin plugin.
 #
 # Steps:
-#   1. Verify Version: header / package.json / Stable tag all match.
+#   1. Verify Version: header / package.json / package-lock.json /
+#      composer.json / Plugin::VERSION / Stable tag all match.
 #   2. Generate the POT file and audit text-domains.
 #   3. Build front-end assets.
 #   4. Install production-only Composer deps.
@@ -66,16 +67,25 @@ log "Checking version consistency"
 plugin_version=$(grep -E '^[[:space:]]*\*?[[:space:]]*Version:' "$PLUGIN_FILE" \
 	| head -1 | sed -E 's/.*Version:[[:space:]]*//' | tr -d '\r')
 pkg_version=$(node -p "require('$PKG_FILE').version")
+lock_version=$(node -p "require('$ROOT/package-lock.json').version")
+composer_version=$(node -p "require('$ROOT/composer.json').version")
+const_version=$(grep -E "const VERSION = '" "$ROOT/src/Plugin.php" \
+	| head -1 | sed -E "s/.*VERSION = '([^']+)'.*/\1/")
 readme_version=$(grep -E '^Stable tag:' "$README_FILE" \
 	| head -1 | sed -E 's/^Stable tag:[[:space:]]*//' | tr -d '\r')
 
-printf '    plugin header: %s\n' "$plugin_version"
-printf '    package.json:  %s\n' "$pkg_version"
-printf '    readme.txt:    %s\n' "$readme_version"
+printf '    plugin header:     %s\n' "$plugin_version"
+printf '    package.json:      %s\n' "$pkg_version"
+printf '    package-lock.json: %s\n' "$lock_version"
+printf '    composer.json:     %s\n' "$composer_version"
+printf '    Plugin.php:        %s\n' "$const_version"
+printf '    readme.txt:        %s\n' "$readme_version"
 
-if [[ "$plugin_version" != "$pkg_version" || "$plugin_version" != "$readme_version" ]]; then
-	fail "Version mismatch — sync all three values before packing."
-fi
+for other_version in "$pkg_version" "$lock_version" "$composer_version" "$const_version" "$readme_version"; do
+	if [[ "$other_version" != "$plugin_version" ]]; then
+		fail "Version mismatch — sync all six values before packing."
+	fi
+done
 
 VERSION="$plugin_version"
 
