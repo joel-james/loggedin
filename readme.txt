@@ -219,6 +219,10 @@ Yes. `wp loggedin sessions` lists, counts and ends a user's sessions, and `wp lo
 
 == Changelog ==
 
+= 3.4.2 =
+* New: Under Logout Oldest or Logout All, the person who just signed in is told that their login signed out their other devices, in wp-admin or as a WooCommerce notice. On for new installs; turn it on under Lockout & recovery on an updated site. Thanks to navidabdi and sun for the original pull request.
+* Dev: New `loggedin_displacing_notice` action and `loggedin_displacing_message` filter.
+
 = 3.4.1 =
 * Fix: The login screen no longer shows a critical error when another plugin's login message filter returns nothing.
 * Fix: A device signed out by a newer login no longer gets a critical error on its next page on WordPress 6.5, or on sites that set `COOKIE_DOMAIN` to false.

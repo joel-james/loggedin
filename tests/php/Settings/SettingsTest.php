@@ -163,7 +163,34 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertFalse( $stored['unlock'] );
 		$this->assertFalse( $stored['exempt_admins'] );
 		$this->assertFalse( $stored['password_signout'] );
+		$this->assertFalse( $stored['displacing_notice'] );
 		$this->assertSame( 2, $stored['maximum'] );
+	}
+
+	public function test_an_upgrade_from_340_keeps_the_new_login_notice_off(): void {
+		update_option( Plugin::VERSION_KEY, '3.4.0' );
+		$this->store_old_option(
+			array(
+				'maximum' => 2,
+				'unlock'  => true,
+			)
+		);
+
+		Plugin::instance()->upgrader()->maybe_upgrade();
+
+		$stored = get_option( Plugin::OPTION_KEY );
+		$this->assertFalse( $stored['displacing_notice'] );
+		$this->assertTrue( $stored['unlock'] );
+		$this->assertSame( 2, $stored['maximum'] );
+	}
+
+	public function test_an_upgrade_from_340_keeps_a_notice_setting_already_chosen(): void {
+		update_option( Plugin::VERSION_KEY, '3.4.0' );
+		$this->store_old_option( array( 'displacing_notice' => true ) );
+
+		Plugin::instance()->upgrader()->maybe_upgrade();
+
+		$this->assertTrue( get_option( Plugin::OPTION_KEY )['displacing_notice'] );
 	}
 
 	public function test_an_upgrade_keeps_a_value_already_chosen(): void {
@@ -184,6 +211,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertTrue( Plugin::instance()->settings()->get( 'unlock' ) );
 		$this->assertTrue( Plugin::instance()->settings()->get( 'exempt_admins' ) );
 		$this->assertTrue( Plugin::instance()->settings()->get( 'password_signout' ) );
+		$this->assertTrue( Plugin::instance()->settings()->get( 'displacing_notice' ) );
 	}
 
 	public function test_an_upgrade_that_keeps_limiting_admins_suggests_the_exemption(): void {
@@ -378,6 +406,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertFalse( $stored['unlock'] );
 		$this->assertFalse( $stored['exempt_admins'] );
 		$this->assertFalse( $stored['password_signout'] );
+		$this->assertFalse( $stored['displacing_notice'] );
 	}
 
 	public function test_options_read_on_every_request_are_autoloaded(): void {

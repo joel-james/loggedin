@@ -1,6 +1,7 @@
 /**
  * Settings → Lockout & recovery: who the limit leaves alone, what a
- * blocked person sees and can do, and what a signed-out device is told.
+ * blocked person sees and can do, and what a signed-out device and the
+ * login that signed it out are told.
  */
 
 /**
@@ -23,6 +24,7 @@ const DEFAULTS = {
 	logic: 'allow',
 	unlock: true,
 	exempt_admins: true,
+	displacing_notice: true,
 	message: '',
 	displaced_redirect: '',
 };
@@ -113,6 +115,15 @@ export function LockoutPage( { boot, errors } ) {
 					value={ get( 'displaced_redirect' ) }
 					error={ errors[ 'loggedin_settings.displaced_redirect' ] }
 					onChange={ ( value ) => set( 'displaced_redirect', value ) }
+				/>
+				<Toggle
+					label={ __( 'Tell the new login', 'loggedin' ) }
+					help={ __(
+						'After a login signs out other devices, the next page says so: a notice in the dashboard, or a store notice on WooCommerce sites.',
+						'loggedin'
+					) }
+					checked={ get( 'displacing_notice' ) }
+					onChange={ ( on ) => set( 'displacing_notice', on ) }
 				/>
 			</Card>
 		</>

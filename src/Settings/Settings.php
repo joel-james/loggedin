@@ -54,8 +54,9 @@ final class Settings {
 	 * Setting keys Loggedin itself defines and sanitises.
 	 *
 	 * @since 3.4.0
+	 * @since 3.4.2 Added `displacing_notice`.
 	 */
-	private const BUILT_IN_KEYS = array( 'maximum', 'logic', 'unlock', 'exempt_admins', 'password_signout', 'message', 'displaced_redirect' );
+	private const BUILT_IN_KEYS = array( 'maximum', 'logic', 'unlock', 'exempt_admins', 'password_signout', 'displacing_notice', 'message', 'displaced_redirect' );
 
 	/**
 	 * Memoized result of {@see self::all()} for this request.
@@ -270,6 +271,7 @@ final class Settings {
 	 *
 	 * @since 3.0.0
 	 * @since 3.4.1 Survives a filter callback that returns a non-array.
+	 * @since 3.4.2 Added `displacing_notice`.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -286,12 +288,14 @@ final class Settings {
 			array(
 				'maximum'            => 1,
 				'logic'              => 'allow',
-				// New installs get these on; the Upgrader turns the
-				// first two off on sites upgrading from before 3.4.0,
-				// so an existing site behaves the same until changed.
+				// New installs get these on; the Upgrader turns them
+				// off on sites upgrading from a version before the
+				// switch existed, so an existing site behaves the same
+				// until changed.
 				'unlock'             => true,
 				'exempt_admins'      => true,
 				'password_signout'   => true,
+				'displacing_notice'  => true,
 				// Empty means the built-in message and no redirect.
 				'message'            => '',
 				'displaced_redirect' => '',
@@ -400,6 +404,7 @@ final class Settings {
 	 * read it. Call it from `init` on: the login modes are translated.
 	 *
 	 * @since 3.4.0
+	 * @since 3.4.2 Added `displacing_notice`.
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -416,6 +421,7 @@ final class Settings {
 			'unlock'             => array( 'type' => 'boolean' ),
 			'exempt_admins'      => array( 'type' => 'boolean' ),
 			'password_signout'   => array( 'type' => 'boolean' ),
+			'displacing_notice'  => array( 'type' => 'boolean' ),
 			'message'            => array( 'type' => 'string' ),
 			'displaced_redirect' => array( 'type' => 'string' ),
 		);
@@ -477,7 +483,7 @@ final class Settings {
 				: $defaults['logic'];
 		}
 
-		foreach ( array( 'unlock', 'exempt_admins', 'password_signout' ) as $key ) {
+		foreach ( array( 'unlock', 'exempt_admins', 'password_signout', 'displacing_notice' ) as $key ) {
 			if ( isset( $input[ $key ] ) ) {
 				$out[ $key ] = (bool) $input[ $key ];
 			}

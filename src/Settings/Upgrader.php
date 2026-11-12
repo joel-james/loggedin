@@ -6,7 +6,7 @@
  * performing any data migrations needed to keep stored state in sync
  * with the current schema: the pre-3.0 single-key options, the review
  * notice and Freemius keys renamed by their libraries, and the 3.4.0
- * defaults an upgraded site keeps off. A new version appends its own
+ * and 3.4.2 defaults an upgraded site keeps off. A new version appends its own
  * step inside `maybe_upgrade()`.
  *
  * The version stamp lives in its own option (`loggedin_version`) so
@@ -93,6 +93,11 @@ final class Upgrader {
 
 		if ( $is_upgrade && ( '' === $stored || version_compare( $stored, '3.4.0', '<' ) ) ) {
 			$this->keep_pre_340_behaviour();
+		}
+
+		// After the 3.4.0 step, which writes the switches it keeps off.
+		if ( $is_upgrade && ( '' === $stored || version_compare( $stored, '3.4.2', '<' ) ) ) {
+			$this->keep_pre_342_behaviour();
 		}
 
 		$this->autoload_options();
@@ -258,9 +263,10 @@ final class Upgrader {
 		// defaults, which would switch those additions on before
 		// `keep_pre_340_behaviour()` reads the stored value.
 		$settings = array(
-			'unlock'           => false,
-			'exempt_admins'    => false,
-			'password_signout' => false,
+			'unlock'            => false,
+			'exempt_admins'     => false,
+			'password_signout'  => false,
+			'displacing_notice' => false,
 		);
 
 		if ( null !== $legacy_max ) {
@@ -291,6 +297,7 @@ final class Upgrader {
 	 * the exemption ({@see ExemptAdminsNotice}).
 	 *
 	 * @since 3.4.0
+	 * @since 3.4.2 Also keeps the 3.4.2 notice to the new login off.
 	 *
 	 * @return void
 	 */
@@ -301,9 +308,10 @@ final class Upgrader {
 		$settings = array_merge(
 			$this->settings->defaults(),
 			array(
-				'unlock'           => false,
-				'exempt_admins'    => false,
-				'password_signout' => false,
+				'unlock'            => false,
+				'exempt_admins'     => false,
+				'password_signout'  => false,
+				'displacing_notice' => false,
 			),
 			$stored
 		);
@@ -313,6 +321,34 @@ final class Upgrader {
 		if ( ! $settings['exempt_admins'] ) {
 			update_option( ExemptAdminsNotice::OPTION, 1, true );
 		}
+	}
+
+	/**
+	 * Keep a site upgrading from before 3.4.2 working as it did.
+	 *
+	 * 3.4.2 tells someone whose login signed out the account's other
+	 * devices that it did ({@see \FoxeLabs\Loggedin\Modules\Lockout\Displacing}).
+	 * New installs get the notice; an upgraded site gets it once an
+	 * admin turns it on. A value already stored is left alone.
+	 *
+	 * The rest of the stored settings are written with their current
+	 * values, defaults filled in, so nothing else changes.
+	 *
+	 * @since 3.4.2
+	 *
+	 * @return void
+	 */
+	protected function keep_pre_342_behaviour(): void {
+		$stored = get_option( Plugin::OPTION_KEY, array() );
+		$stored = is_array( $stored ) ? $stored : array();
+
+		if ( array_key_exists( 'displacing_notice', $stored ) ) {
+			return;
+		}
+
+		$stored['displacing_notice'] = false;
+
+		update_option( Plugin::OPTION_KEY, array_merge( $this->settings->defaults(), $stored ) );
 	}
 
 	/**

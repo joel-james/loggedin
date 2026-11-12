@@ -17,15 +17,17 @@ use FoxeLabs\Loggedin\Settings\Settings;
 defined( 'WPINC' ) || die;
 
 /**
- * Self-unlock by email, and the notice for a device signed out by a newer login.
+ * Self-unlock by email, and the notices on both sides of a login that
+ * signs out other devices.
  *
- * Its settings (`unlock`, `displaced_redirect`) are part of the core
+ * Its settings (`unlock`, `displaced_redirect`, `displacing_notice`) are part of the core
  * `loggedin_settings` option, on Settings › Lockout & recovery. It
  * reaches the session guard only through hooks:
  * `loggedin_error_message` for the unlock link, and
  * `loggedin_sessions_displacing` for the sessions a login ends.
  *
  * @since 3.4.0
+ * @since 3.4.2 Tells the new login that it signed out other devices.
  */
 final class Lockout implements Module {
 
@@ -48,6 +50,15 @@ final class Lockout implements Module {
 	private Displaced $displaced;
 
 	/**
+	 * Signed out other devices by logging in.
+	 *
+	 * @since 3.4.2
+	 *
+	 * @var Displacing
+	 */
+	private Displacing $displacing;
+
+	/**
 	 * Build the module's parts.
 	 *
 	 * @since 3.4.0
@@ -56,8 +67,9 @@ final class Lockout implements Module {
 	 * @param SessionStore $store    Session store.
 	 */
 	public function __construct( Settings $settings, SessionStore $store ) {
-		$this->unlock    = new Unlock( $settings, $store );
-		$this->displaced = new Displaced( $settings, $store );
+		$this->unlock     = new Unlock( $settings, $store );
+		$this->displaced  = new Displaced( $settings, $store );
+		$this->displacing = new Displacing( $settings );
 	}
 
 	/**
@@ -70,6 +82,7 @@ final class Lockout implements Module {
 	public function register(): void {
 		$this->unlock->register();
 		$this->displaced->register();
+		$this->displacing->register();
 	}
 
 	/**
@@ -92,5 +105,16 @@ final class Lockout implements Module {
 	 */
 	public function displaced(): Displaced {
 		return $this->displaced;
+	}
+
+	/**
+	 * Signed out other devices by logging in.
+	 *
+	 * @since 3.4.2
+	 *
+	 * @return Displacing
+	 */
+	public function displacing(): Displacing {
+		return $this->displacing;
 	}
 }
